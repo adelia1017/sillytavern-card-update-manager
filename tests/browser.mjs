@@ -77,7 +77,7 @@ try{
     return {message:document.querySelector('.cum-message').textContent,refreshed:!!window.cumRefreshed,card,entries:snapshot.world.entries,recordBaseline:record?.baseline,backups:backups.map(b=>({id:b.id,status:b.status})),chats};
  });
  await fs.writeFile(path.join(root,'integration-result.json'),JSON.stringify(result,null,2));
- assert.equal(result.refreshed,true,result.message);assert.equal(result.card.chat,'existing-chat');assert.equal(result.card.fav,true);assert.equal(result.card.data.first_mes,'新开场白');
+ assert.equal(result.card.data.extensions.world,'test-old-world');assert.equal(result.card.data.character_book.name,'test-old-world');assert.equal(result.refreshed,true,result.message);assert.equal(result.card.chat,'existing-chat');assert.equal(result.card.fav,true);assert.equal(result.card.data.first_mes,'新开场白');
  const entries=Object.values(result.entries);assert.equal(entries.find(e=>e.comment==='向导').content,'年龄：25\n职业：资深向导');assert.equal(entries.find(e=>e.comment==='商店').disable,false);assert.ok(entries.some(e=>e.comment==='新地图'));assert.ok(entries.some(e=>e.comment==='私有笔记'));assert.ok(!entries.some(e=>e.comment==='旧传闻'));
  assert.equal(result.recordBaseline.data.character_book.entries[1].content,'年龄：22\n职业：资深向导');assert.ok(JSON.stringify(result.chats).includes('existing-chat'));
  const secondCycle=await page.evaluate(async()=>{
@@ -89,8 +89,10 @@ try{
  assert.equal(secondCycle.some(r=>['both','author'].includes(r.type)),false,JSON.stringify(secondCycle));
  assert.equal(secondCycle.find(r=>r.name==='港口').type,'unchanged');
  assert.equal(secondCycle.find(r=>r.name==='商店').type,'unchanged');
- const restored=await page.evaluate(async()=>{const {host,store}=window.cumTest;const b=(await store.backups('cum-test-card.png')).find(b=>b.status==='complete');await host.restore(b);return host.getCard('cum-test-card.png');});
- assert.equal(restored.data.first_mes,'旧开场白');assert.equal(restored.data.extensions.world,'test-old-world');assert.equal(restored.chat,'existing-chat');assert.equal(restored.fav,true);
+ const restored=await page.evaluate(async()=>{const {host,store}=window.cumTest;const b=(await store.backups('cum-test-card.png')).find(b=>b.status==='complete');await host.restore(b);return {card:await host.getCard('cum-test-card.png'),world:(await host.snapshot('cum-test-card.png')).world};});
+ assert.equal(Object.values(restored.world.entries).find(e=>e.comment==='向导').content,'年龄：25\n职业：向导');
+ const restoredCard=restored.card;
+ assert.equal(restoredCard.data.first_mes,'旧开场白');assert.equal(restoredCard.data.extensions.world,'test-old-world');assert.equal(restoredCard.chat,'existing-chat');assert.equal(restoredCard.fav,true);
  await page.evaluate(async()=>{
     document.querySelectorAll('.cum-dialog').forEach(d=>d.close());
     const script=await import('/script.js');await script.getCharacters();script.setCharacterId(script.characters.findIndex(c=>c.avatar==='cum-test-card.png'));

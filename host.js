@@ -56,13 +56,14 @@ export async function connectHost() {
         },
         async getCard(avatar){return request('characters/get',{avatar_url:avatar});},
         async restore(backup){
+            if(backup.newWorldName===backup.snapshot.worldName&&backup.snapshot.worldName)await this.saveWorld(backup.snapshot.worldName,backup.snapshot.world);
             // Repack the export with full card data; /export strips local chat/favourite fields.
             const png=await packCard(backup.snapshot.card,backup.snapshot.png);
             await this.importPng(backup.avatar,png);
             await this.preserveLocal(backup.avatar,backup.snapshot.card);
             const actual=await this.getCard(backup.avatar);
             if(!equal(actual.data,backup.snapshot.card.data) || actual.chat!==backup.snapshot.card.chat)throw Error('角色恢复后校验失败');
-            // The original world is never overwritten by an update. Do not overwrite later edits during rollback.
+
         },
         refresh(){location.reload();},
     };
@@ -78,12 +79,13 @@ export async function applyUpdate({host,store,snapshot,card,world,png,baseline,w
     if(snapshotKey(latest)!==snapshotKey(snapshot))throw Error('当前角色或世界书在比较后发生了修改，请重新比较；本次没有覆盖');
     const previousRecord=await store.get(snapshot.avatar);
     const backup=await store.backup({avatar:snapshot.avatar,snapshot:latest,previousRecord,newWorldName:worldName});
-    let importStarted=false;
+    let importStarted=false,worldStarted=false;
+    const reusesWorld=!!snapshot.worldName&&worldName===snapshot.worldName;
     try{
-        progress('正在保存合并世界书…');await host.saveWorld(worldName,world);
+        progress('正在保存合并世界书…');worldStarted=true;await host.saveWorld(worldName,world);
         // Recheck after backup/world creation, just before the irreversible write.
         host.ensureIdle();
-        if(snapshotKey(await host.snapshot(snapshot.avatar))!==snapshotKey(snapshot))throw Error('更新前检测到新的修改，请重新比较');
+        if(snapshotKey(await host.snapshot(snapshot.avatar))!==snapshotKey(reusesWorld?{...snapshot,world}:snapshot))throw Error('更新前检测到新的修改，请重新比较');
         backup.status='writing';await store.saveBackup(backup);
         progress('正在覆盖目标角色卡…');importStarted=true;
         await host.importPng(snapshot.avatar,png);await host.preserveLocal(snapshot.avatar,latest.card);
@@ -98,12 +100,12 @@ export async function applyUpdate({host,store,snapshot,card,world,png,baseline,w
         await store.put(snapshot.avatar,{baseline:copy(baseline),updatedAt:new Date().toISOString(),draft:null});
         return backup;
     }catch(error){
-        if(importStarted){
-            progress('更新未完成，正在恢复旧卡…');
-            try{await host.restore(backup);await store.put(snapshot.avatar,previousRecord??{});backup.status='rolled-back';}
+        if(importStarted||(reusesWorld&&worldStarted)){
+            progress('更新未完成，正在恢复备份…');
+            try{if(importStarted)await host.restore(backup);else await host.saveWorld(snapshot.worldName,snapshot.world);await store.put(snapshot.avatar,previousRecord??{});backup.status='rolled-back';}
             catch(restoreError){backup.status='recovery-needed';backup.error=String(restoreError);await store.saveBackup(backup);throw Error(`更新失败：${error.message}。自动恢复未完成：${restoreError.message}。请在“备份与恢复”中恢复旧卡。`);}
         }else backup.status='not-applied';
         backup.error=String(error);await store.saveBackup(backup);
-        throw Error(`更新未完成${importStarted?'，已恢复旧卡':''}：${error.message}`);
+        throw Error(`更新未完成${importStarted?'，已恢复旧卡':reusesWorld&&worldStarted?'，已恢复旧世界书':''}：${error.message}`);
     }
 }

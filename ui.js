@@ -46,7 +46,7 @@ export class Manager {
         this.message=el('div',{class:'cum-message',role:'status','aria-live':'polite'});
         this.content=el('main',{class:'cum-content'});
         this.shell=el('div',{class:'cum-shell'},
-            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.3'))),
+            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.4'))),
                 button('关闭',()=>{if(!this.busy)this.dialog.close();},{class:'cum-quiet'})),this.message,this.content);
         this.dialog.append(this.shell);document.body.append(this.dialog);this.dialog.showModal();
         const pref=await this.store.get('@preferences');this.fontSize=Math.min(20,Math.max(10,Number(pref?.fontSize)||12));this.dialog.style.setProperty('--cum-reading-size',this.fontSize+'px');await this.run(()=>card?this.selectCard(card):this.home());
@@ -224,8 +224,8 @@ export class Manager {
     }
     async prepareResult(){
         const s=this.state;const world=assembleWorld(s.rows,s.nextWorld);
-        const card=copy(s.next.card);const readable=s.card.name.replace(/[<>:"/\\|?*\x00-\x1f]/g,'').slice(0,28);
-        const worldName=`CUM-${readable}-${crypto.randomUUID()}`;
+        const card=copy(s.next.card);
+        const worldName=s.snapshot.worldName||s.snapshot.card.data.character_book?.name||card.data.character_book?.name||s.card.name;
         card.data.character_book=toCharacterBook(world,card.data.character_book);card.data.character_book.name=worldName;
         card.data.extensions={...card.data.extensions,world:worldName};
         world.originalData=copy(card.data.character_book);
@@ -236,7 +236,7 @@ export class Manager {
     async apply(){
         const s=this.state;
         const mine=s.rows.filter(r=>r.choice==='mine').length,next=s.rows.filter(r=>r.choice==='next').length,custom=s.rows.filter(r=>r.choice==='custom').length;
-        const text=`将覆盖“${s.card.name}”（${s.card.avatar}）。采用新版 ${next} 条，保留我的 ${mine} 条，自定义 ${custom} 条。开关、触发方式等配置及开场白、描述、正则和脚本采用作者新版。先创建恢复备份；旧世界书保留，合并世界书独立保存并绑定。完成后自动刷新酒馆。`;
+        const text=`将覆盖“${s.card.name}”（${s.card.avatar}）。采用新版 ${next} 条，保留我的 ${mine} 条，自定义 ${custom} 条。开关、触发方式等配置及开场白、描述、正则和脚本采用作者新版。先创建恢复备份；合并世界书沿用原名称并写回；若其他角色共用此世界书，也会读取更新后的内容。完成后自动刷新酒馆。`;
         if(!await this.confirm(text,'备份并覆盖更新'))return;
         const task=async()=>{
             const result=await this.prepareResult();
@@ -268,7 +268,7 @@ export class Manager {
         for(const b of backups)list.append(el('section',{class:'cum-step'},el('h4',{},new Date(b.time).toLocaleString()),el('p',{},`状态：${({complete:'更新成功','rolled-back':'已自动回退','recovery-needed':'需要恢复',prepared:'已备份，尚未更新',writing:'更新中断，建议检查','not-applied':'未覆盖旧卡'})[b.status]??b.status}`),
             button('导出旧卡',()=>this.run(async()=>download(await packCard(b.snapshot.card,b.snapshot.png),`${b.avatar}-before-update.png`))),
             button('恢复此版本',()=>this.run(async()=>{
-                if(!await this.confirm('将角色卡恢复到此快照并重新绑定当时的世界书。原世界书文件一直保留；之后对该世界书的编辑不会撤销。恢复前会再备份当前卡。完成后刷新酒馆。','备份当前卡并恢复'))return;
+                if(!await this.confirm('将角色卡恢复到此快照并重新绑定当时的世界书。同名写回的世界书会恢复为备份时的内容；旧版独立保存的备份只恢复原绑定。恢复前会再备份当前卡。完成后刷新酒馆。','备份当前卡并恢复'))return;
                 this.host.ensureIdle();
                 const before=await this.host.snapshot(b.avatar);await this.store.backup({avatar:b.avatar,snapshot:before,previousRecord:await this.store.get(b.avatar)});
                 await this.host.restore(b);await this.store.put(b.avatar,b.previousRecord??{});this.host.refresh();

@@ -5,7 +5,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE??'playwright');
-const root=path.resolve('test-results/mobile-v0.1.2');await fs.mkdir(root,{recursive:true});
+const root=path.resolve('test-results/mobile-v0.1.3');await fs.mkdir(root,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const widths=[[320,568],[360,640],[390,844],[430,932],[844,390],[1440,1000]];
 try{
@@ -16,13 +16,13 @@ try{
   await page.waitForSelector('#cum-open',{state:'attached'});
   await page.addStyleTag({content:'.menu_button {width:22px!important;word-break:break-all!important} #extensions_settings2 button {writing-mode:vertical-rl;max-width:30px}'});
   const launcher=await page.locator('#cum-open').evaluate(e=>{const s=getComputedStyle(e);return {writing:s.writingMode,width:s.width,display:s.display};});
-  assert.equal(launcher.writing,'horizontal-tb');assert.equal(launcher.display,'block');
+  assert.equal(launcher.writing,'horizontal-tb');
   if(width===320){
    await page.locator('#extensions-settings-button .drawer-toggle').click();
-   await page.locator('#cum-open').scrollIntoViewIfNeeded();
+   await page.locator('#cum-launcher > .inline-drawer-header').click();await page.locator('#cum-open').scrollIntoViewIfNeeded();
    const box=await page.locator('#cum-open').boundingBox();
    assert.ok(box.width>160&&box.height<100,'Launcher must be a full-width horizontal row');
-   const container=await page.locator('#cum-launcher').boundingBox();assert.ok(container.height<=box.height+20,'Launcher must not stretch across the settings panel');
+   const container=await page.locator('#cum-launcher').boundingBox();assert.ok(container.height<220,'Compact native drawer');
    await page.locator('#cum-launcher').screenshot({path:path.join(root,'launcher.png')});
   }
   await page.evaluate(async()=>{
@@ -51,8 +51,13 @@ try{
   const contents=async panel=>panel.locator('.cum-paper').evaluate(e=>{const c=e.cloneNode(true);c.querySelectorAll('del').forEach(n=>n.remove());return c.textContent;});
   assert.equal(await contents(minePanel),'年龄：25\n职业：向导\n我的修改末行');
   assert.equal(await contents(authorPanel),'年龄：22\n职业：资深向导\n作者新版末行');
-  assert.equal(await minePanel.locator('ins').first().evaluate(e=>getComputedStyle(e).color),'rgb(20, 92, 193)');
-  assert.equal(await authorPanel.locator('ins').first().evaluate(e=>getComputedStyle(e).color),'rgb(22, 115, 58)');
+  assert.equal(await minePanel.locator('ins').first().evaluate(e=>getComputedStyle(e).color),'rgb(21, 21, 21)');
+  assert.equal(await authorPanel.locator('ins').first().evaluate(e=>getComputedStyle(e).color),'rgb(21, 21, 21)');
+  assert.equal(await minePanel.locator('.cum-highlight').first().evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(204, 228, 255)');
+  assert.equal(await minePanel.locator('.cum-paper').evaluate(e=>getComputedStyle(e).fontSize),'12px');
+  await page.getByRole('slider',{name:'对比字号'}).fill('14');
+  assert.equal(await minePanel.locator('.cum-paper').evaluate(e=>getComputedStyle(e).fontSize),'14px');
+  await page.getByRole('slider',{name:'对比字号'}).fill('12');
   assert.ok((await authorPanel.boundingBox()).y>(await minePanel.boundingBox()).y);
   assert.equal(await minePanel.locator('del').first().evaluate(e=>getComputedStyle(e).textDecorationLine),'line-through');
   await visible(minePanel.locator('.cum-paper'));

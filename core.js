@@ -204,6 +204,17 @@ function sequenceDiff(a,b){
     if(end)add('same',a.slice(a.length-end).join(''));
     return out;
 }
+export function sentenceDiff(before='',after=''){
+    const tokens=t=>t.match(/[^。！？!?\n]+[。！？!?\n]?|[。！？!?\n]/g)??[];
+    const parts=sequenceDiff(tokens(before),tokens(after)),out=[];
+    for(let i=0;i<parts.length;){
+        if(parts[i].kind==='same'){out.push(parts[i++]);continue;}
+        let old='',next='';
+        while(i<parts.length&&parts[i].kind!=='same'){if(parts[i].kind==='remove')old+=parts[i].text;else next+=parts[i].text;i++;}
+        out.push({kind:'change',old,next,parts:textDiff(old,next)});
+    }
+    return out;
+}
 export function textDiff(before='',after=''){
     if(before===after)return before?[{kind:'same',text:before}]:[];
     const tokens=t=>t.match(/[^\n]*\n|[^\n]+$/g)??[];

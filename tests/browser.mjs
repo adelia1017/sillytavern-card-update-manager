@@ -91,6 +91,16 @@ try{
  assert.equal(secondCycle.find(r=>r.name==='商店').type,'unchanged');
  const restored=await page.evaluate(async()=>{const {host,store}=window.cumTest;const b=(await store.backups('cum-test-card.png')).find(b=>b.status==='complete');await host.restore(b);return host.getCard('cum-test-card.png');});
  assert.equal(restored.data.first_mes,'旧开场白');assert.equal(restored.data.extensions.world,'test-old-world');assert.equal(restored.chat,'existing-chat');assert.equal(restored.fav,true);
+ await page.evaluate(async()=>{
+    document.querySelectorAll('.cum-dialog').forEach(d=>d.close());
+    const script=await import('/script.js');await script.getCharacters();script.setCharacterId(script.characters.findIndex(c=>c.avatar==='cum-test-card.png'));
+    const select=document.querySelector('#char-management-dropdown');
+    if(document.querySelector('#replace_update').nextElementSibling.id!=='cum-character-update')throw Error('Wrong contextual entry position');
+    select.value='cum-character-update';select.dispatchEvent(new Event('change',{bubbles:true}));
+ });
+ await page.waitForSelector('.cum-dialog[open] .cum-character-name');
+ assert.ok((await page.locator('.cum-dialog[open] .cum-character-name').textContent()).includes('cum-test-card.png'));
+ console.log('PASS character menu: opens selected card directly');
  console.log('PASS: real ST import, world merge, backup, baseline advancement, chat/favourite retention, restore, desktop/mobile UI');
  console.log('PAGE_ERRORS',errors.filter(e=>e.includes('card-update-manager')));
 }catch(error){await page.screenshot({path:path.join(root,'failure.png'),fullPage:true});console.error('FAILED',error);console.error(await page.locator('.cum-message').textContent().catch(()=>''));throw error;}

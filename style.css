@@ -112,15 +112,29 @@
 
 /* The settings entry is outside the modal: never inherit the narrow icon-button rules. */
 #cum-launcher { display: block !important; width: 100% !important; min-width: 0 !important; flex: 0 0 auto !important; align-self: stretch !important; height: auto !important; min-height: 0 !important; box-sizing: border-box !important; padding: 8px 0 !important; }
-#cum-launcher #cum-open { display: block !important; width: 100% !important; max-width: none !important; min-width: 0 !important; height: auto !important; min-height: 48px !important; box-sizing: border-box !important; padding: 12px 16px !important; margin: 0 !important; writing-mode: horizontal-tb !important; white-space: normal !important; word-break: normal !important; overflow-wrap: normal !important; text-align: left !important; font: 16px/1.5 system-ui, sans-serif !important; letter-spacing: normal !important; color: #182537 !important; background: #edf4fc !important; border: 1px solid #8a9db5 !important; border-radius: 8px !important; cursor: pointer !important; text-shadow: none !important; }
+#cum-launcher #cum-open {width:100%!important;max-width:none!important;writing-mode:horizontal-tb!important;word-break:normal!important;white-space:normal!important;min-height:44px;}
+#cum-launcher > .inline-drawer-header {width:100%;box-sizing:border-box;}
+
 .cum-dialog .cum-text-legend { font-size: 12px; margin: 12px 0; }
 .cum-dialog .cum-text-panel { display: block; width: 100%; margin: 16px 0; }
 .cum-dialog .cum-text-panel h4 { margin: 0; padding: 10px 12px; color: #182537; background: #e9eff6; border-radius: 8px 8px 0 0; }
 .cum-dialog .cum-text-panel .cum-paper { display: block; box-sizing: border-box; padding: 16px; background: #fff !important; color: #151515 !important; white-space: pre-wrap !important; overflow-wrap: anywhere; word-break: break-word; font: 16px/1.85 system-ui, 'Microsoft YaHei', sans-serif; text-shadow: none !important; border-radius: 0 0 8px 8px; }
 .cum-dialog .cum-paper .cum-text-same { color: #151515 !important; background: transparent !important; text-decoration: none !important; }
-.cum-dialog .cum-paper ins { background: transparent !important; text-decoration: none !important; font-weight: 600; }
-.cum-dialog .cum-text-mine .cum-paper ins { color: #145cc1 !important; }
-.cum-dialog .cum-text-author .cum-paper ins { color: #16733a !important; }
-.cum-dialog .cum-paper del { color: #151515 !important; background: transparent !important; text-decoration-line: line-through !important; text-decoration-thickness: 2px !important; }
-.cum-dialog .cum-text-mine .cum-paper del { text-decoration-color: #145cc1 !important; }
-.cum-dialog .cum-text-author .cum-paper del { text-decoration-color: #16733a !important; }
+
+.cum-dialog,.cum-confirm{--cum-bg:var(--SmartThemeBlurTintColor,#f7f7f7);--cum-panel:var(--SmartThemeChatTintColor,#fff);--cum-text:var(--SmartThemeBodyColor,#222);--cum-muted:var(--SmartThemeBodyColor,#555);--cum-border:var(--SmartThemeBorderColor,#ccc);--cum-accent:var(--SmartThemeQuoteColor,#487eac);--cum-button:var(--SmartThemeBotMesBlurTintColor,#e9edf0);color-scheme:normal;backdrop-filter:blur(16px);font-size:13px;border-radius:10px;}
+.cum-dialog .cum-eyebrow{display:none}
+.cum-dialog .cum-header{padding:12px 16px}
+.cum-dialog h2{font-size:18px}
+.cum-dialog button:hover,.cum-confirm button:hover{background:var(--cum-button)}
+.cum-dialog .cum-text-panel{margin:12px 0}
+.cum-dialog .cum-text-panel h4{font:600 12px/1.5 system-ui,sans-serif;padding:7px 10px;border-radius:4px 4px 0 0}
+.cum-dialog .cum-text-panel .cum-paper,.cum-dialog .cum-result-content{font:var(--cum-reading-size,12px)/1.6 system-ui,'Microsoft YaHei',sans-serif!important;padding:10px;border-radius:0 0 4px 4px;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+.cum-dialog .cum-paper *{font:inherit!important;color:#151515!important;text-shadow:none!important}
+.cum-dialog .cum-paper .cum-sentence{display:block;background:transparent!important;font-weight:normal;text-decoration:none}
+.cum-dialog .cum-paper del.cum-sentence{text-decoration:line-through!important;text-decoration-thickness:1px!important;text-decoration-color:#555!important}
+.cum-dialog .cum-text-mine .cum-highlight{background:#cce4ff!important}
+.cum-dialog .cum-text-author .cum-highlight{background:#ccebd5!important}
+.cum-dialog .cum-font-control{display:flex;align-items:center;gap:10px;font-size:12px;margin:12px 0 4px}
+.cum-dialog .cum-font-control input{width:130px;min-height:32px;padding:0;accent-color:var(--cum-accent)}
+.cum-dialog .cum-font-control output{min-width:32px}
+@media(max-width:760px){.cum-dialog{border-radius:0}.cum-dialog .cum-header{padding:8px 12px}}

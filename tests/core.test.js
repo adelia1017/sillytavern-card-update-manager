@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildRows,matchEntries,assembleWorld,selectedEntry,cleanEntry,toCharacterBook,normalizeCardWorld,lineDiff,textDiff} from '../core.js';
+import {buildRows,matchEntries,assembleWorld,selectedEntry,cleanEntry,toCharacterBook,normalizeCardWorld,lineDiff,textDiff,sentenceDiff} from '../core.js';
 const entry=(comment,content,extra={})=>({uid:0,comment,content,key:[comment],disable:false,order:100,extensions:{},...extra});
 test('三方分类和默认选择：作者、玩家、双方、相同改动',()=>{
  const base=[entry('a','old'),entry('b','old'),entry('c','old'),entry('d','old')];
@@ -61,4 +61,13 @@ test('内联差异保留原文和换行；不变文本无着色段',()=>{
  }
  const same='一样\n'.repeat(5000);assert.deepEqual(textDiff(same,same),[{kind:'same',text:same}]);
  assert.deepEqual(textDiff('ABC DEF','ABC DEG'),[{kind:'same',text:'ABC DE'},{kind:'remove',text:'F'},{kind:'add',text:'G'}]);
+});
+
+test('句子对照保留完整旧句和原始换行，未修改句不高亮',()=>{
+ const before='不变。年龄20岁。\n职业：向导',after='不变。年龄25岁。\n职业：向导';
+ const parts=sentenceDiff(before,after);
+ assert.equal(parts.map(p=>p.kind==='same'?p.text:p.old).join(''),before);
+ assert.equal(parts.map(p=>p.kind==='same'?p.text:p.next).join(''),after);
+ assert.equal(parts.find(p=>p.kind==='change').old,'年龄20岁。');
+ assert.deepEqual(sentenceDiff(before,before),[{kind:'same',text:before}]);
 });

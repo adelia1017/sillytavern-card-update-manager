@@ -138,3 +138,8 @@
 .cum-dialog .cum-font-control input{width:130px;min-height:32px;padding:0;accent-color:var(--cum-accent)}
 .cum-dialog .cum-font-control output{min-width:32px}
 @media(max-width:760px){.cum-dialog{border-radius:0}.cum-dialog .cum-header{padding:8px 12px}}
+
+.cum-two-way-tools{flex-shrink:0;margin-bottom:8px}
+.cum-dialog .cum-two-way-tools .cum-note{font-size:12px;margin:0 0 6px!important}
+.cum-two-way-tools button{font-size:12px;padding:6px 8px;min-height:36px}
+@media(max-width:760px),(max-height:500px) and (max-width:1000px){.cum-merge-page[data-mobile-pane="detail"] .cum-two-way-tools{display:none}}

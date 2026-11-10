@@ -1,7 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildRows,matchEntries,assembleWorld,selectedEntry,cleanEntry,toCharacterBook,normalizeCardWorld,lineDiff,textDiff,sentenceDiff} from '../core.js';
+import {buildRows,buildTwoWayRows,matchEntries,assembleWorld,selectedEntry,cleanEntry,toCharacterBook,normalizeCardWorld,lineDiff,textDiff,sentenceDiff} from '../core.js';
 const entry=(comment,content,extra={})=>({uid:0,comment,content,key:[comment],disable:false,order:100,extensions:{},...extra});
+test('无旧版：差异均待决定，配置差异忽略，不推断新增删除来源',()=>{
+ const mine=[entry('相同','same'),entry('差异','current'),entry('独有','private')];
+ const next=[entry('相同','same',{disable:true}),entry('差异','updated'),entry('新版独有','new')];
+ const rows=buildTwoWayRows(mine,next);
+ assert.deepEqual(rows.map(r=>[r.type,r.choice]),[['unchanged','next'],['different',null],['currentOnly',null],['newOnly',null]]);
+ assert.throws(()=>assembleWorld(rows,{entries:{}}),/未处理/);
+ rows.forEach(r=>{if(!r.choice)r.choice='mine';});
+ assert.equal(selectedEntry(rows[1]).content,'current');assert.equal(selectedEntry(rows[3]),undefined);
+ const ambiguous=buildTwoWayRows([entry('重名','a',{key:[]}),entry('重名','b',{key:[]})],[entry('重名','c',{key:[]}),entry('重名','d',{key:[]})]);
+ assert.deepEqual(ambiguous.map(r=>r.type),['currentOnly','currentOnly','newOnly','newOnly']);
+});
 test('三方分类和默认选择：作者、玩家、双方、相同改动',()=>{
  const base=[entry('a','old'),entry('b','old'),entry('c','old'),entry('d','old')];
  const mine=[entry('a','old'),entry('b','mine'),entry('c','mine'),entry('d','same')];

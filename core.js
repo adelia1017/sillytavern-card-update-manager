@@ -62,7 +62,18 @@ export const LABELS = {
     unchanged:'完全相同', author:'仅作者修改', mine:'仅我修改', both:'双方修改', same:'双方结果相同',
     authorAdded:'作者新增', mineAdded:'我的新增', authorDeleted:'作者删除', mineDeleted:'我的删除',
     bothDeleted:'双方删除', additionConflict:'双方新增同名条目',
+    different:'正文不同', currentOnly:'仅当前版存在', newOnly:'仅新版存在',
 };
+export function buildTwoWayRows(mine,next){
+    const map=matchEntries(mine,next),used=new Set(map),rows=[];
+    const add=(m,n,id)=>{
+        const type=!m?'newOnly':!n?'currentOnly':m.content===n.content?'unchanged':'different';
+        rows.push({id,mine:copy(m),next:copy(n),type,choice:type==='unchanged'?'next':null,title:n?.comment||m?.comment||`未命名条目 ${id}`});
+    };
+    mine.forEach((m,i)=>add(m,next[map[i]],`m${i}`));
+    next.forEach((n,i)=>{if(!used.has(i))add(undefined,n,`n${i}`);});
+    return rows;
+}
 export function classify(base, mine, next) {
     if (!base) return mine && next ? (mine.content===next.content ? 'same':'additionConflict') : mine ? 'mineAdded':'authorAdded';
     if (!mine && !next) return 'bothDeleted';

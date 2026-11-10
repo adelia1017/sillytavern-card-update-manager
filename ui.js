@@ -1,4 +1,4 @@
-import {copy,entriesOf,matchEntries,buildRows,LABELS,selectedEntry,assembleWorld,toCharacterBook,normalizeCardWorld,sentenceDiff} from './core.js';
+import {copy,entriesOf,matchEntries,buildRows,buildTwoWayRows,LABELS,selectedEntry,assembleWorld,toCharacterBook,normalizeCardWorld,sentenceDiff} from './core.js';
 import {readCardFile,packCard,download,bytesToBase64,base64ToBytes,parseJSON} from './card.js';
 import {applyUpdate} from './host.js';
 
@@ -46,7 +46,7 @@ export class Manager {
         this.message=el('div',{class:'cum-message',role:'status','aria-live':'polite'});
         this.content=el('main',{class:'cum-content'});
         this.shell=el('div',{class:'cum-shell'},
-            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.4'))),
+            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.5'))),
                 button('关闭',()=>{if(!this.busy)this.dialog.close();},{class:'cum-quiet'})),this.message,this.content);
         this.dialog.append(this.shell);document.body.append(this.dialog);this.dialog.showModal();
         const pref=await this.store.get('@preferences');this.fontSize=Math.min(20,Math.max(10,Number(pref?.fontSize)||12));this.dialog.style.setProperty('--cum-reading-size',this.fontSize+'px');await this.run(()=>card?this.selectCard(card):this.home());
@@ -104,7 +104,7 @@ export class Manager {
         const steps=el('div',{class:'cum-steps'},
             el('section',{class:'cum-step'},el('span',{class:'cum-step-number'},'01'),el('h4',{},'作者旧原版'),el('p',{},s.record.baseline?`已保存：${s.record.baseline.data.name} · ${s.record.baseline.data.character_book.entries.length} 条`:'导入你开始修改前下载的作者原版，用来识别哪些改动来自你。'),button(s.record.baseline?'更换旧原版':'导入旧原版',()=>this.run(()=>this.importBaseline()))),
             el('section',{class:'cum-step'},el('span',{class:'cum-step-number'},'02'),el('h4',{},'当前游玩版'),el('p',{},'比较时直接读取这张卡实际绑定的主要世界书。无需切换聊天。')),
-            el('section',{class:'cum-step'},el('span',{class:'cum-step-number'},'03'),el('h4',{},'作者新版'),el('p',{},'导入 PNG 或 JSON 新版卡。比较期间不会修改酒馆中的角色卡。'),button('导入新版并比较',()=>this.run(()=>this.importNext()),{class:'cum-primary',disabled:!s.record.baseline})));
+            el('section',{class:'cum-step'},el('span',{class:'cum-step-number'},'03'),el('h4',{},'作者新版'),el('p',{},'导入 PNG 或 JSON 新版卡。比较期间不会修改酒馆中的角色卡。'),button('导入新版并比较',()=>this.run(()=>this.importNext()),{class:'cum-primary',disabled:!s.record.baseline}),button('没有旧原版，直接比较',()=>this.run(()=>this.importNext(true)),{class:'cum-quiet'})));
         this.content.replaceChildren(this.nav(),steps,el('div',{class:'cum-actions'},s.record.draft?button('继续合并草稿',()=>this.run(()=>this.resumeDraft()),{class:'cum-primary'}):null,button('导入项目备份',()=>this.run(()=>this.importProject()))),
             el('p',{class:'cum-note'},'只比较和合并主要世界书正文，开关和触发配置采用新版；开场白、描述、正则、脚本等其他角色卡内容采用作者新版。全局、聊天及附加世界书不纳入比较。'));
     }
@@ -115,34 +115,34 @@ export class Manager {
         this.state.record={...this.state.record,baseline:parsed.card,draft:null};
         await this.store.put(this.state.card.avatar,this.state.record);this.renderSetup();this.say('旧原版已保存。现在可以导入新版。');
     }
-    async importNext(){
+    async importNext(twoWay=false){
         const file=await pickFile('.png,.json');if(!file)return;
         const next=await readCardFile(file);normalizeCardWorld(next.card,this.host.convert);
-        if(!await this.confirm(`将“${next.card.data.name}”作为“${this.state.card.name}”的作者新版进行比较。此步骤不会覆盖旧卡。`,'开始比较'))return;
+        if(!await this.confirm(`将“${next.card.data.name}”作为“${this.state.card.name}”的作者新版进行比较。此步骤不会覆盖旧卡。${twoWay?'缺少旧原版，无法判断差异来源，所有不同条目需确认。':''}`,'开始比较'))return;
         const snapshot=await this.host.snapshot(this.state.card.avatar);
-        Object.assign(this.state,{snapshot,next,rows:null});await this.beginComparison();
+        Object.assign(this.state,{snapshot,next,rows:null,twoWay});await this.beginComparison();
     }
     prepareMaps(){
         const s=this.state;
-        s.baseWorld=normalizeCardWorld(s.record.baseline,this.host.convert);s.nextWorld=normalizeCardWorld(s.next.card,this.host.convert);
+        s.baseWorld=s.twoWay?null:normalizeCardWorld(s.record.baseline,this.host.convert);s.nextWorld=normalizeCardWorld(s.next.card,this.host.convert);
         s.base=entriesOf(s.baseWorld);s.mine=entriesOf(s.snapshot.world);s.nextEntries=entriesOf(s.nextWorld);
         s.maps={mine:matchEntries(s.base,s.mine),next:matchEntries(s.base,s.nextEntries)};
     }
     async beginComparison(){
         this.prepareMaps();
         const s=this.state;
-        s.rows=buildRows(s.base,s.mine,s.nextEntries,s.maps);
+        s.rows=s.twoWay?buildTwoWayRows(s.mine,s.nextEntries):buildRows(s.base,s.mine,s.nextEntries,s.maps);
         s.selected=0;s.filter='changed';s.mobilePane='list';
         await this.saveDraft();this.renderMerge();
     }
     async saveDraft(){
         const s=this.state;
-        s.record={...s.record,draft:{textOnly:true,snapshot:s.snapshot,next:s.next,maps:s.maps,rows:s.rows,savedAt:new Date().toISOString()}};
+        s.record={...s.record,draft:{textOnly:true,twoWay:!!s.twoWay,snapshot:s.snapshot,next:s.next,maps:s.maps,rows:s.rows,savedAt:new Date().toISOString()}};
         await this.store.put(s.card.avatar,s.record);
     }
     async resumeDraft(){
         const s=this.state,d=s.record.draft;
-        Object.assign(s,{snapshot:d.snapshot,next:d.next});this.prepareMaps();s.maps=d.maps??s.maps;s.rows=buildRows(s.base,s.mine,s.nextEntries,s.maps);for(const row of s.rows){const old=d.rows?.find(r=>r.id===row.id);if(old&&row.type!=='unchanged'&&old.choice){row.choice=old.choice;row.custom=old.custom;}}s.filter='changed';s.selected=0;s.mobilePane='list';s.detailSource=null;
+        Object.assign(s,{snapshot:d.snapshot,next:d.next,twoWay:!!d.twoWay});this.prepareMaps();s.maps=d.maps??s.maps;s.rows=s.twoWay?buildTwoWayRows(s.mine,s.nextEntries):buildRows(s.base,s.mine,s.nextEntries,s.maps);for(const row of s.rows){const old=d.rows?.find(r=>r.id===row.id);if(old&&row.type!=='unchanged'&&old.choice){row.choice=old.choice;row.custom=old.custom;}}s.filter='changed';s.selected=0;s.mobilePane='list';s.detailSource=null;
         this.renderMerge();this.say('草稿已恢复。应用前会检查当前卡和世界书是否发生变化。');
     }
     renderMerge(){
@@ -154,8 +154,8 @@ export class Manager {
         this.list=el('aside',{class:'cum-entry-list','aria-label':'世界书条目'});this.detail=el('section',{class:'cum-detail','aria-label':'条目差异详情',tabindex:'-1'});
         this.mobileTabs=el('div',{class:'cum-mobile-tabs','aria-label':'比较面板'},button('条目列表',()=>this.setMobilePane('list'),{'data-pane':'list'}),button('差异详情',()=>this.setMobilePane('detail'),{'data-pane':'detail'}));
         this.content.replaceChildren(this.nav(),this.mobileTabs,el('div',{class:'cum-toolbar'},el('div',{class:'cum-merge-summary'},el('strong',{},`世界书 · ${s.rows.length} 条`),el('span',{},`${pending} 条待处理`)),filter),
-            el('div',{class:'cum-workspace'},this.list,this.detail),
-            el('footer',{class:'cum-footer'},el('span',{},'其他卡内容采用作者新版；旧世界书保留。'),el('div',{class:'cum-actions'},button('保存草稿',()=>this.run(async()=>{await this.saveDraft();this.say('草稿已保存。');})),button('检查并覆盖更新',()=>this.run(()=>this.apply()),{class:'cum-primary',disabled:!!pending}))));
+            s.twoWay?el('div',{class:'cum-two-way-tools'},el('p',{class:'cum-note'},'无旧原版：仅显示版本差异，无法判断修改来源。仅一侧存在的条目也需确认；无法可靠匹配的条目分开显示。'),el('div',{class:'cum-actions'},button(`剩余 ${pending} 条保留当前版`,()=>this.run(()=>this.resolvePending('mine')),{disabled:!pending}),button(`剩余 ${pending} 条采用新版`,()=>this.run(()=>this.resolvePending('next')),{disabled:!pending}))):null,el('div',{class:'cum-workspace'},this.list,this.detail),
+            el('footer',{class:'cum-footer'},el('span',{},'其他卡内容采用作者新版；世界书沿用原名写回。'),el('div',{class:'cum-actions'},button('保存草稿',()=>this.run(async()=>{await this.saveDraft();this.say('草稿已保存。');})),button('检查并覆盖更新',()=>this.run(()=>this.apply()),{class:'cum-primary',disabled:!!pending}))));
         this.drawList();this.setMobilePane(s.mobilePane??'list');
     }
     setMobilePane(pane){
@@ -171,18 +171,24 @@ export class Manager {
         const visible=s.rows.map((r,i)=>({r,i})).filter(({r})=>s.filter==='all'||s.filter==='changed'&&!['unchanged','bothDeleted'].includes(r.type)||s.filter==='pending'&&!r.choice||r.type===s.filter);
         if(!visible.some(({i})=>i===s.selected))s.selected=visible[0]?.i??-1;
         this.visibleRows=visible.map(x=>x.i);
-        for(const {r,i}of visible){const b=button('',()=>this.selectEntry(i),{class:'cum-entry'+(s.selected===i?' is-selected':''),'aria-pressed':String(s.selected===i)});b.append(el('strong',{},r.title),el('span',{},LABELS[r.type]),el('small',{},!r.choice?'待选择':r.choice==='mine'?'保留我的':r.choice==='next'?'采用新版':r.choice==='delete'?'删除':'自定义合并'));this.list.append(b);}
+        for(const {r,i}of visible){const b=button('',()=>this.selectEntry(i),{class:'cum-entry'+(s.selected===i?' is-selected':''),'aria-pressed':String(s.selected===i)});b.append(el('strong',{},r.title),el('span',{},LABELS[r.type]),el('small',{},!r.choice?'待选择':r.choice==='mine'?(s.twoWay?'保留当前版':'保留我的'):r.choice==='next'?'采用新版':r.choice==='delete'?'删除':'自定义合并'));this.list.append(b);}
         if(!visible.length)this.list.append(el('p',{class:'cum-empty'},'此分类没有条目。'));
         this.drawDetail();
+    }
+    async resolvePending(choice){
+        const count=this.state.rows.filter(r=>!r.choice).length;if(!count)return;
+        if(!await this.confirm(`将剩余 ${count} 个未决定条目全部${choice==='mine'?'保留当前版':'采用新版'}。所选版本不存在的条目将被删除；已决定条目不变。`, '应用批量选择'))return;
+        for(const r of this.state.rows)if(!r.choice)r.choice=choice;
+        await this.saveDraft();this.renderMerge();
     }
     textPanel(label,base,value,side){
         const panel=el('section',{class:'cum-text-panel cum-text-'+side,'aria-label':label},el('h4',{},label));
         const paper=el('div',{class:'cum-paper'});
-        if(!value)panel.append(el('p',{},base?'此版本已删除该条目，划线内容为删除的原文。':'此版本中没有该条目。'));
+        if(!value)panel.append(el('p',{},this.state.twoWay?'此版本中没有该条目。':base?'此版本已删除该条目，划线内容为删除的原文。':'此版本中没有该条目。'));
         for(const block of sentenceDiff(base?.content??'',value?.content??'')){
             if(block.kind==='same'){paper.append(el('span',{class:'cum-text-same'},block.text));continue;}
             for(const [kind,text] of [['remove',block.old],['add',block.next]]){
-                if(!text)continue;
+                if(!text||this.state.twoWay&&kind==='remove')continue;
                 const sentence=el(kind==='remove'?'del':'ins',{class:'cum-sentence cum-text-'+kind});
                 for(const part of block.parts){
                     if(part.kind===(kind==='remove'?'add':'remove'))continue;
@@ -208,10 +214,10 @@ export class Manager {
         const at=this.visibleRows.indexOf(s.selected);
         this.detail.append(el('div',{class:'cum-entry-nav'},button('上一条',()=>this.selectEntry(this.visibleRows[at-1]),{disabled:at<=0}),el('span',{},`${at+1} / ${this.visibleRows.length}`),button('下一条',()=>this.selectEntry(this.visibleRows[at+1]),{disabled:at>=this.visibleRows.length-1})),
             el('div',{class:'cum-detail-heading'},el('span',{class:'cum-badge'},LABELS[r.type]),el('h3',{},r.title)),
-            el('div',{class:'cum-actions'},button(r.mine?'保留我的正文':'保留我的删除',()=>choose('mine'),{'aria-pressed':String(r.choice==='mine')}),button(r.next?'采用新版正文':'接受新版删除',()=>choose('next'),{'aria-pressed':String(r.choice==='next')}),r.mine||r.next?button('编辑正文',()=>this.editFields(r)):null),
-            this.fontControl(),el('p',{class:'cum-text-legend'},'蓝底：我的改动 · 绿底：作者改动 · 删除线：修改前的原句'),
-            this.textPanel('我的版本',r.base,r.mine,'mine'),
-            this.textPanel('作者新版',r.base,r.next,'author'));
+            el('div',{class:'cum-actions'},button(s.twoWay?(r.mine?'保留当前正文':'当前版不含此条目'):r.mine?'保留我的正文':'保留我的删除',()=>choose('mine'),{'aria-pressed':String(r.choice==='mine')}),button(s.twoWay?(r.next?'采用新版正文':'新版不含此条目'):r.next?'采用新版正文':'接受新版删除',()=>choose('next'),{'aria-pressed':String(r.choice==='next')}),r.mine||r.next?button('编辑正文',()=>this.editFields(r)):null),
+            this.fontControl(),el('p',{class:'cum-text-legend'},s.twoWay?'蓝底：当前版差异 · 绿底：新版差异；底色不代表修改来源。':'蓝底：我的改动 · 绿底：作者改动 · 删除线：修改前的原句'),
+            this.textPanel(s.twoWay?'当前版本':'我的版本',s.twoWay?r.next:r.base,r.mine,'mine'),
+            this.textPanel('作者新版',s.twoWay?r.mine:r.base,r.next,'author'));
         const entry=r.choice?selectedEntry(r):undefined;
         this.detail.append(el('details',{class:'cum-result-preview'},el('summary',{},'合并结果预览'),el('pre',{class:'cum-result-content'},r.choice?(entry?.content??'（删除此条目）'):'尚未选择')));
     }
@@ -255,8 +261,8 @@ export class Manager {
         const file=await pickFile('.json');if(!file)return;
         if(file.size>256*1024*1024)throw Error('项目备份超过 256 MB');
         const data=hydrate(parseJSON(await file.text()));
-        if(data.format!=='cum-project-v1'||data.avatar!==this.state.card.avatar||!data.record?.baseline)throw Error('这不是当前角色的项目备份（需匹配角色文件名）');
-        normalizeCardWorld(data.record.baseline,this.host.convert);
+        if(data.format!=='cum-project-v1'||data.avatar!==this.state.card.avatar||(!data.record?.baseline&&!data.record?.draft?.twoWay))throw Error('这不是当前角色的项目备份（需匹配角色文件名）');
+        if(data.record.baseline)normalizeCardWorld(data.record.baseline,this.host.convert);
         if(!await this.confirm('导入项目备份会替换当前浏览器中这张卡的基线和草稿，酒馆角色卡保持不变。','导入备份'))return;
         for(const backup of data.backups??[]){if(backup.avatar!==data.avatar||!backup.snapshot?.png)throw Error('备份快照不完整');await this.store.saveBackup({...backup,account:this.host.account,id:crypto.randomUUID()});}
         await this.store.put(data.avatar,data.record);this.state.record=data.record;this.renderSetup();this.say('项目备份已导入。');

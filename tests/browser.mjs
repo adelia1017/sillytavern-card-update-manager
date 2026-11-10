@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import {writePng} from '../card.js';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE??'playwright');
+const twoWay=process.env.TEST_TWO_WAY==='1';
 const root=path.resolve('test-results');await fs.mkdir(root,{recursive:true});
 const settingsPath=path.join(root,'data/default-user/settings.json');
 const settings=JSON.parse(await fs.readFile(settingsPath,'utf8'));settings.firstRun=false;await fs.writeFile(settingsPath,JSON.stringify(settings,null,2));
@@ -51,15 +52,33 @@ try{
     const chooser=page.waitForEvent('filechooser');await page.getByRole('button',{name:buttonName,exact:true}).click();await(await chooser).setFiles(file);
     if(confirmName)await page.getByRole('button',{name:confirmName,exact:true}).click();
  };
- await inputFile('导入旧原版',baseFile,'建立基线');
- await inputFile('导入新版并比较',nextFile,'开始比较');
+ if(!twoWay)await inputFile('导入旧原版',baseFile,'建立基线');
+ await inputFile(twoWay?'没有旧原版，直接比较':'导入新版并比较',nextFile,'开始比较');
  assert.equal(await page.getByText('核对条目对应关系',{exact:true}).count(),0);
  await page.waitForSelector('.cum-entry');
- const types=await page.evaluate(()=>window.cumTest.manager.state.rows.map(r=>r.type));assert.ok(types.includes('both'));assert.ok(types.includes('mineAdded'));
- await page.locator('.cum-entry').filter({hasText:'向导'}).click();await page.getByRole('button',{name:'保留我的正文',exact:true}).click();
+ const types=await page.evaluate(()=>window.cumTest.manager.state.rows.map(r=>r.type));assert.ok(types.includes(twoWay?'different':'both'));assert.ok(types.includes(twoWay?'currentOnly':'mineAdded'));
+ if(twoWay){assert.ok(await page.getByRole('button',{name:'检查并覆盖更新'}).isDisabled());await page.evaluate(async()=>{const m=window.cumTest.manager;delete m.state.record.baseline;await m.saveDraft();await m.selectCard(m.state.card);await m.resumeDraft();if(!m.state.twoWay||m.state.record.baseline)throw Error('Draft mode lost');});}
+ if(twoWay){
+  await page.setViewportSize({width:320,height:568});
+  await page.locator('.cum-entry').filter({hasText:'向导'}).click();
+  assert.equal(await page.locator('.cum-text-panel.cum-text-mine h4').textContent(),'当前版本');
+  assert.equal(await page.locator('.cum-detail del').count(),0);
+  const footerBox=await page.getByRole('button',{name:'检查并覆盖更新'}).boundingBox();assert.ok(footerBox.y+footerBox.height<=569);
+  assert.equal(await page.evaluate(()=>document.querySelector('.cum-dialog').scrollWidth<=document.querySelector('.cum-dialog').clientWidth),true);
+  await page.screenshot({path:path.join(root,'two-way-mobile.png')});
+  await page.setViewportSize({width:1440,height:1000});
+ }
+ await page.locator('.cum-entry').filter({hasText:'向导'}).click();await page.getByRole('button',{name:twoWay?'保留当前正文':'保留我的正文',exact:true}).click();
  await page.getByRole('button',{name:'编辑正文',exact:true}).click();
  await page.getByRole('textbox',{name:'编辑最终正文'}).fill('年龄：25\n职业：资深向导');
  await page.getByRole('button',{name:'保存正文',exact:true}).click();
+ if(twoWay){
+   await page.locator('.cum-entry').filter({hasText:'私有笔记'}).click();await page.getByRole('button',{name:'保留当前正文',exact:true}).click();
+   const retained=await page.evaluate(()=>window.cumTest.manager.state.rows.find(r=>r.title==='向导').custom.content);
+   await page.getByRole('button',{name:/剩余 .* 条采用新版/}).click();await page.getByRole('button',{name:'应用批量选择',exact:true}).click();
+   assert.equal(await page.evaluate(()=>window.cumTest.manager.state.rows.find(r=>r.title==='向导').custom.content),retained);
+   await page.evaluate(async()=>{const m=window.cumTest.manager;await m.selectCard(m.state.card);await m.resumeDraft();if(m.state.rows.some(r=>!r.choice))throw Error('Draft choices lost');});
+ }
  assert.equal(await page.getByRole('button',{name:'检查并覆盖更新'}).isEnabled(),true);
  await page.screenshot({path:path.join(root,'desktop-merge.png'),fullPage:true});
  await page.setViewportSize({width:390,height:844});
@@ -103,6 +122,7 @@ try{
  await page.waitForSelector('.cum-dialog[open] .cum-character-name');
  assert.ok((await page.locator('.cum-dialog[open] .cum-character-name').textContent()).includes('cum-test-card.png'));
  console.log('PASS character menu: opens selected card directly');
+ console.log(twoWay?'MODE: two-way':'MODE: three-way');
  console.log('PASS: real ST import, world merge, backup, baseline advancement, chat/favourite retention, restore, desktop/mobile UI');
  console.log('PAGE_ERRORS',errors.filter(e=>e.includes('card-update-manager')));
 }catch(error){await page.screenshot({path:path.join(root,'failure.png'),fullPage:true});console.error('FAILED',error);console.error(await page.locator('.cum-message').textContent().catch(()=>''));throw error;}

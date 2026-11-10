@@ -12,6 +12,100 @@
 .cum-heading,.cum-toolbar,.cum-footer{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}.cum-heading{margin-bottom:20px}.cum-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.cum-toolbar{padding:16px 0;border-top:1px solid var(--cum-border)}.cum-toolbar p{margin:4px 0}.cum-footer{padding:18px 0 0}.cum-footer>span{font-size:13px;color:var(--cum-muted)}
 .cum-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}.cum-dialog button.cum-card{display:flex;gap:16px;padding:18px;text-align:left;min-height:150px;background:var(--cum-panel)}.cum-card img{width:68px;height:96px;object-fit:cover;border-radius:8px;flex-shrink:0}.cum-card-info{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0}.cum-card strong{font-size:17px}.cum-card small{word-break:break-all}.cum-dialog small{font-size:12px;color:var(--cum-muted)}.cum-badge{display:inline-block;font-size:12px;padding:3px 8px;background:var(--cum-button);color:var(--cum-accent);border-radius:5px}
 .cum-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0}.cum-step{background:var(--cum-panel);border:1px solid var(--cum-border);border-radius:12px;padding:20px}.cum-step-number{color:var(--cum-accent);font-size:24px;font-weight:600}.cum-note{font-size:13px;margin-top:24px!important}.cum-empty{padding:32px;text-align:center}.cum-workspace{display:grid;grid-template-columns:minmax(200px,27%) minmax(0,1fr);border:1px solid var(--cum-border);border-radius:12px;overflow:hidden;min-height:420px}.cum-entry-list{max-height:60dvh;overflow:auto;background:var(--cum-panel);border-right:1px solid var(--cum-border);padding:8px}.cum-dialog button.cum-entry{display:flex;flex-direction:column;align-items:flex-start;width:100%;gap:4px;margin:0 0 6px;text-align:left;background:transparent;border:1px solid transparent;border-radius:8px}.cum-entry span{font-size:12px;color:var(--cum-muted)}.cum-dialog button.cum-entry.is-selected{background:var(--cum-button);border-color:var(--cum-accent)}.cum-detail{padding:20px;max-height:60dvh;overflow:auto;min-width:0}.cum-diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}.cum-diff-panel{min-width:0}.cum-dialog details{border-top:1px solid var(--cum-border);padding:10px 0}.cum-dialog summary{cursor:pointer;min-height:32px;overflow-wrap:anywhere}.cum-dialog pre{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.65 ui-monospace,Consolas,monospace;color:var(--cum-text);background:#111925;padding:12px;border-radius:6px;max-height:420px;overflow:auto}.cum-line{display:block;white-space:pre-wrap}.cum-line.add{background:#163e32;color:#a4edc9}.cum-line.remove{background:#462831;color:#ffc1c4}.cum-line.same{color:var(--cum-muted)}.cum-dialog .cum-diff{padding:8px}.cum-field-form label{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:12px 0}.cum-field-form textarea{width:100%;resize:vertical}.cum-confirm{width:min(520px,92vw);padding:24px;max-height:90dvh}.cum-confirm p{white-space:pre-wrap}.cum-confirm .cum-actions{justify-content:flex-end;margin-top:20px}.cum-mapping{max-height:48dvh;overflow:auto;border:1px solid var(--cum-border);border-radius:8px}.cum-map-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:10px;border-bottom:1px solid var(--cum-border);align-items:center}.cum-map-row>*{min-width:0;overflow-wrap:anywhere}.cum-map-head{background:var(--cum-panel);position:sticky;top:0}.cum-check{display:flex;gap:10px;align-items:center;margin:16px 0}.cum-dialog .cum-check input{min-height:24px;width:24px;flex-shrink:0}.cum-backups{display:grid;gap:16px}.cum-backups button{margin-right:8px}
-.cum-merge-page{display:flex;flex-direction:column;overflow:hidden}.cum-merge-page>.cum-heading{margin-bottom:10px}.cum-merge-page>.cum-heading>div:first-child{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.cum-merge-page>.cum-heading h3{margin:0}.cum-merge-page .cum-toolbar{padding:12px 0}.cum-merge-page .cum-workspace{flex:1;min-height:140px}.cum-merge-page .cum-detail,.cum-merge-page .cum-entry-list{max-height:none;min-height:0}.cum-merge-page .cum-footer{flex-shrink:0;background:var(--cum-bg)}
-@media(max-width:760px){.cum-dialog{width:98vw;max-width:98vw;height:96dvh;max-height:96dvh;font-size:16px}.cum-header,.cum-content{padding:14px}.cum-steps{grid-template-columns:1fr}.cum-workspace{grid-template-columns:1fr}.cum-entry-list{max-height:220px;border-right:0;border-bottom:1px solid var(--cum-border)}.cum-detail{max-height:none;padding:14px}.cum-diff-grid{grid-template-columns:1fr}.cum-map-row{grid-template-columns:1fr;gap:6px}.cum-map-head{display:none}.cum-footer{position:static}.cum-card-grid{grid-template-columns:1fr}.cum-heading{align-items:flex-start}.cum-dialog h2{font-size:20px}.cum-merge-page{display:block;overflow:auto}.cum-merge-page .cum-entry-list{max-height:200px}.cum-merge-page .cum-footer{position:sticky;bottom:-14px;padding:12px 0;background:var(--cum-bg);border-top:1px solid var(--cum-border)}.cum-merge-page .cum-footer>span{display:none}.cum-merge-page .cum-footer button{font-size:13px;padding:8px}.cum-merge-page .cum-toolbar{gap:8px}}
+.cum-dialog *, .cum-confirm * { box-sizing: border-box; }
+.cum-header, .cum-message { flex-shrink: 0; }
+.cum-version { font-size: 11px; color: var(--cum-muted); font-weight: 400; margin-left: 8px; vertical-align: middle; }
+.cum-message { max-height: 20dvh; overflow-y: auto; }
+.cum-content { min-width: 0; }
+.cum-dialog .cum-nav { gap: 8px; flex-wrap: nowrap; position: relative; z-index: 4; }
+.cum-nav-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.cum-nav-title > button { flex-shrink: 0; }
+.cum-character-name { min-width: 0; }
+.cum-character-name h3 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; }
+.cum-character-name small { overflow-wrap: anywhere; }
+.cum-dialog .cum-more { border: 0; padding: 0; flex-shrink: 0; }
+.cum-more > summary { min-height: 44px; padding: 10px; border: 1px solid var(--cum-border); border-radius: 8px; }
+.cum-more-actions { position: absolute; right: 0; top: 100%; z-index: 6; display: grid; gap: 8px; width: min(280px, 85vw); max-height: 60dvh; overflow-y: auto; background: var(--cum-panel); padding: 12px; border: 1px solid var(--cum-border); border-radius: 8px; box-shadow: 0 12px 28px #0008; }
+.cum-merge-page { display: flex; flex-direction: column; overflow: hidden; }
+.cum-merge-page > .cum-heading { margin-bottom: 8px; flex-shrink: 0; }
+.cum-merge-page .cum-toolbar { padding: 10px 0; flex-shrink: 0; }
+.cum-merge-summary { display: flex; gap: 16px; align-items: center; }
+.cum-merge-summary span { color: var(--cum-muted); font-size: 13px; }
+.cum-merge-page .cum-workspace { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+.cum-merge-page .cum-detail, .cum-merge-page .cum-entry-list { max-height: none; min-height: 0; overscroll-behavior: contain; }
+.cum-merge-page .cum-footer { flex-shrink: 0; background: var(--cum-bg); }
+.cum-mobile-tabs { display: none; }
+.cum-entry-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.cum-entry-nav span { font-size: 13px; color: var(--cum-muted); }
+.cum-detail-heading h3 { overflow-wrap: anywhere; margin: 8px 0 12px; }
+.cum-source-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 16px 0 8px; }
+.cum-source-tabs button { padding: 8px; font-size: 14px; }
+.cum-dialog .cum-field-change { margin: 16px 0; padding-top: 8px; border-top: 1px solid var(--cum-border); }
+.cum-before-after { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.cum-before, .cum-after { min-width: 0; }
+.cum-before > strong, .cum-after > strong { font-size: 13px; }
+.cum-before > strong { color: #ffc1c4; }
+.cum-after > strong { color: #a4edc9; }
+.cum-dialog .cum-detail pre { max-height: none; overflow: visible; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; line-height: 1.8; margin: 8px 0; }
+.cum-dialog .cum-before pre { border-left: 3px solid #d78087; }
+.cum-dialog .cum-after pre { border-left: 3px solid #67bd97; }
+.cum-inline-diff { margin-top: 8px; }
+.cum-map-label { display: block; min-width: 0; }
+.cum-map-label > span { display: none; }
+.cum-map-label select { width: 100%; }
+
+@media (max-width: 760px), (max-height: 500px) and (max-width: 1000px) {
+    .cum-dialog { inset: 0; margin: 0; width: 100%; max-width: 100%; height: 100vh; height: 100dvh; max-height: 100dvh; border: 0; border-radius: 0; font-size: 16px; }
+    .cum-shell { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+    .cum-header { padding: 8px 12px; gap: 8px; }
+    .cum-eyebrow { display: none; }
+    .cum-dialog h2 { font-size: 18px; margin: 0; }
+    .cum-content { padding: 12px; }
+    .cum-message:not(:empty) { padding: 8px 12px; font-size: 13px; }
+    .cum-heading { align-items: center; }
+    .cum-nav-title { gap: 8px; }
+    .cum-nav-title > button { font-size: 13px; padding: 8px; }
+    .cum-character-name h3 { font-size: 16px; }
+    .cum-character-name small { display: none; }
+    .cum-more > summary { font-size: 13px; }
+    .cum-steps { grid-template-columns: 1fr; margin: 16px 0; }
+    .cum-card-grid { grid-template-columns: 1fr; }
+    .cum-card strong { overflow-wrap: anywhere; }
+    .cum-map-row { grid-template-columns: 1fr; gap: 8px; padding: 12px; }
+    .cum-map-head { display: none; }
+    .cum-map-label > span { display: block; color: var(--cum-muted); font-size: 13px; padding-bottom: 4px; }
+    .cum-mapping { max-height: none; overflow: visible; }
+    .cum-check { align-items: flex-start; }
+    .cum-merge-page { display: flex; overflow: hidden; padding: 8px 12px 0; }
+    .cum-mobile-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex-shrink: 0; margin-bottom: 8px; }
+    .cum-mobile-tabs button { font-size: 14px; }
+    .cum-merge-page .cum-toolbar { display: grid; grid-template-columns: 1fr minmax(120px, 48%); gap: 8px; }
+    .cum-merge-summary { flex-direction: column; align-items: flex-start; gap: 0; }
+    .cum-merge-summary strong { font-size: 14px; }
+    .cum-toolbar select { font-size: 14px; width: 100%; }
+    .cum-merge-page .cum-workspace { display: block; overflow: hidden; border-radius: 8px; }
+    .cum-merge-page .cum-entry-list, .cum-merge-page .cum-detail { height: 100%; max-height: none; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+    .cum-merge-page .cum-entry-list { border: 0; }
+    .cum-merge-page .cum-detail { padding: 12px; }
+    .cum-merge-page[data-mobile-pane="list"] .cum-detail { display: none; }
+    .cum-merge-page[data-mobile-pane="detail"] .cum-entry-list,
+    .cum-merge-page[data-mobile-pane="detail"] > .cum-toolbar { display: none; }
+    .cum-before-after { grid-template-columns: 1fr; gap: 8px; }
+    .cum-before-after > .cum-after { order: -1; }
+    .cum-detail-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
+    .cum-detail-heading h3 { font-size: 18px; margin: 0; }
+    .cum-entry-nav { margin-bottom: 8px; }
+    .cum-entry-nav button { padding: 8px; font-size: 13px; }
+    .cum-detail > .cum-actions { gap: 6px; }
+    .cum-detail > .cum-actions button { flex: 1; padding: 8px 6px; font-size: 13px; }
+    .cum-source-tabs { padding-top: 12px; position: sticky; top: -12px; z-index: 2; background: var(--cum-bg); }
+    .cum-source-tabs button { font-size: 12px; padding: 8px 3px; white-space: nowrap; }
+    .cum-dialog .cum-detail pre { font-size: 15px; padding: 10px; }
+    .cum-merge-page .cum-footer { position: static; margin: 0; padding: 8px 0; border-top: 0; }
+    .cum-merge-page .cum-footer > span { display: none; }
+    .cum-merge-page .cum-footer > .cum-actions { width: 100%; display: grid; grid-template-columns: 1fr 2fr; gap: 8px; }
+    .cum-merge-page .cum-footer button { font-size: 14px; padding: 8px; }
+    .cum-field-form label { align-items: flex-start; }
+    .cum-field-form textarea { font-size: 16px; }
+}
 @media(prefers-reduced-motion:reduce){.cum-dialog *,.cum-confirm *{transition:none!important}}

@@ -22,6 +22,7 @@ try{
    await page.locator('#cum-open').scrollIntoViewIfNeeded();
    const box=await page.locator('#cum-open').boundingBox();
    assert.ok(box.width>160&&box.height<100,'Launcher must be a full-width horizontal row');
+   const container=await page.locator('#cum-launcher').boundingBox();assert.ok(container.height<=box.height+20,'Launcher must not stretch across the settings panel');
    await page.locator('#cum-launcher').screenshot({path:path.join(root,'launcher.png')});
   }
   await page.evaluate(async()=>{

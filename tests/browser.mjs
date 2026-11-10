@@ -53,13 +53,13 @@ try{
  };
  await inputFile('导入旧原版',baseFile,'建立基线');
  await inputFile('导入新版并比较',nextFile,'开始比较');
- await page.getByRole('checkbox').check();await page.getByRole('button',{name:'确认对应关系，查看差异'}).click();
+ assert.equal(await page.getByText('核对条目对应关系',{exact:true}).count(),0);
  await page.waitForSelector('.cum-entry');
- const types=await page.evaluate(()=>window.cumTest.manager.state.rows.map(r=>r.type));assert.ok(types.includes('both'));assert.ok(types.includes('mine'));
- await page.locator('.cum-entry').filter({hasText:'向导'}).click();await page.getByRole('button',{name:'保留我的',exact:true}).click();
- await page.getByRole('button',{name:'分别选择字段 / 编辑',exact:true}).click();
+ const types=await page.evaluate(()=>window.cumTest.manager.state.rows.map(r=>r.type));assert.ok(types.includes('both'));assert.ok(types.includes('mineAdded'));
+ await page.locator('.cum-entry').filter({hasText:'向导'}).click();await page.getByRole('button',{name:'保留我的正文',exact:true}).click();
+ await page.getByRole('button',{name:'编辑正文',exact:true}).click();
  await page.getByRole('textbox',{name:'编辑最终正文'}).fill('年龄：25\n职业：资深向导');
- await page.getByRole('button',{name:'保存此条合并',exact:true}).click();
+ await page.getByRole('button',{name:'保存正文',exact:true}).click();
  assert.equal(await page.getByRole('button',{name:'检查并覆盖更新'}).isEnabled(),true);
  await page.screenshot({path:path.join(root,'desktop-merge.png'),fullPage:true});
  await page.setViewportSize({width:390,height:844});
@@ -78,7 +78,7 @@ try{
  });
  await fs.writeFile(path.join(root,'integration-result.json'),JSON.stringify(result,null,2));
  assert.equal(result.refreshed,true,result.message);assert.equal(result.card.chat,'existing-chat');assert.equal(result.card.fav,true);assert.equal(result.card.data.first_mes,'新开场白');
- const entries=Object.values(result.entries);assert.equal(entries.find(e=>e.comment==='向导').content,'年龄：25\n职业：资深向导');assert.equal(entries.find(e=>e.comment==='商店').disable,true);assert.ok(entries.some(e=>e.comment==='新地图'));assert.ok(entries.some(e=>e.comment==='私有笔记'));assert.ok(!entries.some(e=>e.comment==='旧传闻'));
+ const entries=Object.values(result.entries);assert.equal(entries.find(e=>e.comment==='向导').content,'年龄：25\n职业：资深向导');assert.equal(entries.find(e=>e.comment==='商店').disable,false);assert.ok(entries.some(e=>e.comment==='新地图'));assert.ok(entries.some(e=>e.comment==='私有笔记'));assert.ok(!entries.some(e=>e.comment==='旧传闻'));
  assert.equal(result.recordBaseline.data.character_book.entries[1].content,'年龄：22\n职业：资深向导');assert.ok(JSON.stringify(result.chats).includes('existing-chat'));
  const secondCycle=await page.evaluate(async()=>{
     const {host,store}=window.cumTest;const core=await import(window.cumModuleRoot+'core.js');
@@ -88,7 +88,7 @@ try{
  });
  assert.equal(secondCycle.some(r=>['both','author'].includes(r.type)),false,JSON.stringify(secondCycle));
  assert.equal(secondCycle.find(r=>r.name==='港口').type,'unchanged');
- assert.equal(secondCycle.find(r=>r.name==='商店').type,'mine');
+ assert.equal(secondCycle.find(r=>r.name==='商店').type,'unchanged');
  const restored=await page.evaluate(async()=>{const {host,store}=window.cumTest;const b=(await store.backups('cum-test-card.png')).find(b=>b.status==='complete');await host.restore(b);return host.getCard('cum-test-card.png');});
  assert.equal(restored.data.first_mes,'旧开场白');assert.equal(restored.data.extensions.world,'test-old-world');assert.equal(restored.chat,'existing-chat');assert.equal(restored.fav,true);
  console.log('PASS: real ST import, world merge, backup, baseline advancement, chat/favourite retention, restore, desktop/mobile UI');

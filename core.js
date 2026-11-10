@@ -46,7 +46,7 @@ export function matchEntries(base, target) {
     uniquePass(e => e.comment?.trim());
     uniquePass(e => e.content?.trim());
     uniquePass(e => e.key?.length ? stable(e.key) : '');
-    // ID alone is intentionally insufficient. Unmatched items require review in the mapping screen.
+    // ID alone is insufficient. Unmatched items remain distinct additions/deletions.
     return result;
 }
 export function validateMap(map, base, target) {
@@ -64,12 +64,12 @@ export const LABELS = {
     bothDeleted:'双方删除', additionConflict:'双方新增同名条目',
 };
 export function classify(base, mine, next) {
-    if (!base) return mine && next ? (equal(cleanEntry(mine),cleanEntry(next)) ? 'same':'additionConflict') : mine ? 'mineAdded':'authorAdded';
+    if (!base) return mine && next ? (mine.content===next.content ? 'same':'additionConflict') : mine ? 'mineAdded':'authorAdded';
     if (!mine && !next) return 'bothDeleted';
-    if (!mine) return equal(cleanEntry(base),cleanEntry(next)) ? 'mineDeleted':'both';
-    if (!next) return equal(cleanEntry(base),cleanEntry(mine)) ? 'authorDeleted':'both';
-    const m = !equal(cleanEntry(base), cleanEntry(mine)), n = !equal(cleanEntry(base),cleanEntry(next));
-    return !m && !n ? 'unchanged' : m && n ? (equal(cleanEntry(mine),cleanEntry(next)) ? 'same':'both') : m ? 'mine':'author';
+    if (!mine) return base.content===next.content ? 'mineDeleted':'both';
+    if (!next) return base.content===mine.content ? 'authorDeleted':'both';
+    const m = base.content!==mine.content, n = base.content!==next.content;
+    return !m && !n ? 'unchanged' : m && n ? (mine.content===next.content ? 'same':'both') : m ? 'mine':'author';
 }
 export function buildRows(base, mine, next, maps = {}) {
     const mm = maps.mine ?? matchEntries(base,mine), nm = maps.next ?? matchEntries(base,next);
@@ -93,9 +93,12 @@ export function buildRows(base, mine, next, maps = {}) {
 export function selectedEntry(row) {
     if (!row.choice) throw Error(`仍有未处理条目：${row.title}`);
     if (row.choice === 'delete') return undefined;
-    if (row.choice === 'custom') return copy(row.custom);
+    if (row.choice === 'custom') return {...copy(row.next??row.mine??row.custom),content:row.custom.content};
     if (!['mine','next'].includes(row.choice)) throw Error('未知选择');
-    return copy(row[row.choice]);
+    const selected=row[row.choice];
+    if(!selected)return undefined;
+    // Choices carry text only. Existing entries retain the new author's settings.
+    return {...copy(row.next??selected),content:selected.content};
 }
 export function changedFields(base, value) {
     const b = cleanEntry(base) ?? {}, v = cleanEntry(value) ?? {};
@@ -176,4 +179,40 @@ export function lineDiff(oldText='', newText='') {
         else result.push({kind:'remove',text:a[i++]});
     }
     return result;
+}
+
+// Keep original whitespace. Equal text is always emitted as plain text, including large entries.
+function sequenceDiff(a,b){
+    let start=0,end=0;
+    while(start<a.length&&start<b.length&&a[start]===b[start])start++;
+    while(end<a.length-start&&end<b.length-start&&a[a.length-1-end]===b[b.length-1-end])end++;
+    const out=[];
+    const add=(kind,text)=>{if(!text)return;const last=out.at(-1);if(last?.kind===kind)last.text+=text;else out.push({kind,text});};
+    add('same',a.slice(0,start).join(''));
+    const x=a.slice(start,a.length-end),y=b.slice(start,b.length-end);
+    if(x.length*y.length>300000){add('remove',x.join(''));add('add',y.join(''));}
+    else {
+        const dp=Array.from({length:x.length+1},()=>new Uint32Array(y.length+1));
+        for(let i=x.length-1;i>=0;i--)for(let j=y.length-1;j>=0;j--)dp[i][j]=x[i]===y[j]?dp[i+1][j+1]+1:Math.max(dp[i+1][j],dp[i][j+1]);
+        let i=0,j=0;
+        while(i<x.length||j<y.length){
+            if(i<x.length&&j<y.length&&x[i]===y[j])add('same',x[i++]),j++;
+            else if(i<x.length&&(j===y.length||dp[i+1][j]>=dp[i][j+1]))add('remove',x[i++]);
+            else add('add',y[j++]);
+        }
+    }
+    if(end)add('same',a.slice(a.length-end).join(''));
+    return out;
+}
+export function textDiff(before='',after=''){
+    if(before===after)return before?[{kind:'same',text:before}]:[];
+    const tokens=t=>t.match(/[^\n]*\n|[^\n]+$/g)??[];
+    const lines=sequenceDiff(tokens(before),tokens(after)),out=[];
+    for(let i=0;i<lines.length;){
+        if(lines[i].kind==='same'){out.push(lines[i++]);continue;}
+        let old='',next='';
+        while(i<lines.length&&lines[i].kind!=='same'){if(lines[i].kind==='remove')old+=lines[i].text;else next+=lines[i].text;i++;}
+        out.push(...sequenceDiff(Array.from(old),Array.from(next)));
+    }
+    return out;
 }

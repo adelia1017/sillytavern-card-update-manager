@@ -109,3 +109,18 @@
     .cum-field-form textarea { font-size: 16px; }
 }
 @media(prefers-reduced-motion:reduce){.cum-dialog *,.cum-confirm *{transition:none!important}}
+
+/* The settings entry is outside the modal: never inherit the narrow icon-button rules. */
+#cum-launcher { display: block !important; width: 100% !important; min-width: 0 !important; flex: 0 0 100% !important; box-sizing: border-box !important; padding: 8px 0 !important; }
+#cum-launcher #cum-open { display: block !important; width: 100% !important; max-width: none !important; min-width: 0 !important; height: auto !important; min-height: 48px !important; box-sizing: border-box !important; padding: 12px 16px !important; margin: 0 !important; writing-mode: horizontal-tb !important; white-space: normal !important; word-break: normal !important; overflow-wrap: normal !important; text-align: left !important; font: 16px/1.5 system-ui, sans-serif !important; letter-spacing: normal !important; color: #182537 !important; background: #edf4fc !important; border: 1px solid #8a9db5 !important; border-radius: 8px !important; cursor: pointer !important; text-shadow: none !important; }
+.cum-dialog .cum-text-legend { font-size: 12px; margin: 12px 0; }
+.cum-dialog .cum-text-panel { display: block; width: 100%; margin: 16px 0; }
+.cum-dialog .cum-text-panel h4 { margin: 0; padding: 10px 12px; color: #182537; background: #e9eff6; border-radius: 8px 8px 0 0; }
+.cum-dialog .cum-text-panel .cum-paper { display: block; box-sizing: border-box; padding: 16px; background: #fff !important; color: #151515 !important; white-space: pre-wrap !important; overflow-wrap: anywhere; word-break: break-word; font: 16px/1.85 system-ui, 'Microsoft YaHei', sans-serif; text-shadow: none !important; border-radius: 0 0 8px 8px; }
+.cum-dialog .cum-paper .cum-text-same { color: #151515 !important; background: transparent !important; text-decoration: none !important; }
+.cum-dialog .cum-paper ins { background: transparent !important; text-decoration: none !important; font-weight: 600; }
+.cum-dialog .cum-text-mine .cum-paper ins { color: #145cc1 !important; }
+.cum-dialog .cum-text-author .cum-paper ins { color: #16733a !important; }
+.cum-dialog .cum-paper del { color: #151515 !important; background: transparent !important; text-decoration-line: line-through !important; text-decoration-thickness: 2px !important; }
+.cum-dialog .cum-text-mine .cum-paper del { text-decoration-color: #145cc1 !important; }
+.cum-dialog .cum-text-author .cum-paper del { text-decoration-color: #16733a !important; }

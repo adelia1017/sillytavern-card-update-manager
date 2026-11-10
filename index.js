@@ -13,8 +13,8 @@ function install(){
     if(document.getElementById('cum-open'))return;
     const target=document.querySelector('#extensions_settings2')??document.querySelector('#extensions_settings');
     if(!target){setTimeout(install,1000);return;}
-    const block=document.createElement('div');block.className='extension_container';
-    const button=document.createElement('button');button.id='cum-open';button.className='menu_button';button.type='button';button.textContent='角色卡更新管理器';button.addEventListener('click',open);block.append(button);target.append(block);
+    const block=document.createElement('div');block.id='cum-launcher';
+    const button=document.createElement('button');button.id='cum-open';button.type='button';button.textContent='角色卡更新管理器';button.addEventListener('click',open);block.append(button);target.append(block);
     const menu=document.querySelector('#extensionsMenu');
     if(menu){const entry=document.createElement('div');entry.className='list-group-item flex-container flexGap5';entry.tabIndex=0;entry.role='button';entry.textContent='角色卡更新管理器';entry.addEventListener('click',open);entry.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();open();}});menu.append(entry);}
 }

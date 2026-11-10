@@ -1,4 +1,4 @@
-import {copy,stable,equal,entriesOf,matchEntries,buildRows,LABELS,changedFields,fieldMerge,selectedEntry,assembleWorld,toCharacterBook,normalizeCardWorld,lineDiff,cleanEntry} from './core.js';
+import {copy,entriesOf,matchEntries,buildRows,LABELS,selectedEntry,assembleWorld,toCharacterBook,normalizeCardWorld,textDiff} from './core.js';
 import {readCardFile,packCard,download,bytesToBase64,base64ToBytes,parseJSON} from './card.js';
 import {applyUpdate} from './host.js';
 
@@ -15,8 +15,6 @@ function el(tag,attrs={},...children){
 }
 const button=(text,action,attrs={})=>el('button',{type:'button',onclick:action,...attrs},text);
 const pretty=v=>v===undefined?'（不存在）':typeof v==='string'?v:JSON.stringify(v,null,2);
-const title=e=>e?.comment||`未命名条目 #${e?.uid??'—'}`;
-const FIELD_NAMES={content:'正文',key:'触发关键词',keysecondary:'辅助关键词',disable:'禁用',constant:'常驻',comment:'条目名称',order:'插入顺序',position:'插入位置',depth:'深度',probability:'触发概率',selective:'选择性触发',extensions:'扩展字段'};
 async function pickFile(accept){
     return new Promise(resolve=>{
         const input=el('input',{type:'file',accept,hidden:''});document.body.append(input);
@@ -48,7 +46,7 @@ export class Manager {
         this.message=el('div',{class:'cum-message',role:'status','aria-live':'polite'});
         this.content=el('main',{class:'cum-content'});
         this.shell=el('div',{class:'cum-shell'},
-            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.1'))),
+            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.2'))),
                 button('关闭',()=>{if(!this.busy)this.dialog.close();},{class:'cum-quiet'})),this.message,this.content);
         this.dialog.append(this.shell);document.body.append(this.dialog);this.dialog.showModal();
         await this.run(()=>this.home());
@@ -97,7 +95,7 @@ export class Manager {
     }
     nav(){
         const actions=el('div',{class:'cum-more-actions'},button('备份与恢复',()=>this.run(()=>this.backupPage())),button('导出项目备份',()=>this.run(()=>this.exportProject())));
-        if(this.state.rows)actions.append(button('导出合并卡',()=>this.run(()=>this.exportMerged()),{disabled:this.state.rows.some(r=>!r.choice)}),button('重新核对对应关系',()=>this.renderMapping()),button('读取当前修改重新比较',()=>this.run(async()=>{if(!await this.confirm('重新读取会清除当前条目选择，是否继续？','重新比较'))return;this.state.snapshot=await this.host.snapshot(this.state.card.avatar);this.prepareMaps();this.renderMapping();})));
+        if(this.state.rows)actions.append(button('导出合并卡',()=>this.run(()=>this.exportMerged()),{disabled:this.state.rows.some(r=>!r.choice)}),button('读取当前修改重新比较',()=>this.run(async()=>{if(!await this.confirm('重新读取会清除当前条目选择，是否继续？','重新比较'))return;this.state.snapshot=await this.host.snapshot(this.state.card.avatar);await this.beginComparison();})));
         return el('div',{class:'cum-heading cum-nav'},el('div',{class:'cum-nav-title'},button('← 角色列表',()=>this.run(()=>this.home()),{class:'cum-quiet'}),el('div',{class:'cum-character-name'},el('h3',{},this.state.card.name),el('small',{},this.state.card.avatar))),el('details',{class:'cum-more'},el('summary',{},'更多'),actions));
     }
     renderSetup(){
@@ -108,7 +106,7 @@ export class Manager {
             el('section',{class:'cum-step'},el('span',{class:'cum-step-number'},'02'),el('h4',{},'当前游玩版'),el('p',{},'比较时直接读取这张卡实际绑定的主要世界书。无需切换聊天。')),
             el('section',{class:'cum-step'},el('span',{class:'cum-step-number'},'03'),el('h4',{},'作者新版'),el('p',{},'导入 PNG 或 JSON 新版卡。比较期间不会修改酒馆中的角色卡。'),button('导入新版并比较',()=>this.run(()=>this.importNext()),{class:'cum-primary',disabled:!s.record.baseline})));
         this.content.replaceChildren(this.nav(),steps,el('div',{class:'cum-actions'},s.record.draft?button('继续合并草稿',()=>this.run(()=>this.resumeDraft()),{class:'cum-primary'}):null,button('导入项目备份',()=>this.run(()=>this.importProject()))),
-            el('p',{class:'cum-note'},'首版合并主要世界书；开场白、描述、正则、脚本等其他角色卡内容采用作者新版。全局、聊天及附加世界书不纳入比较。'));
+            el('p',{class:'cum-note'},'只比较和合并主要世界书正文，开关和触发配置采用新版；开场白、描述、正则、脚本等其他角色卡内容采用作者新版。全局、聊天及附加世界书不纳入比较。'));
     }
     async importBaseline(){
         const file=await pickFile('.png,.json');if(!file)return;
@@ -122,7 +120,7 @@ export class Manager {
         const next=await readCardFile(file);normalizeCardWorld(next.card,this.host.convert);
         if(!await this.confirm(`将“${next.card.data.name}”作为“${this.state.card.name}”的作者新版进行比较。此步骤不会覆盖旧卡。`,'开始比较'))return;
         const snapshot=await this.host.snapshot(this.state.card.avatar);
-        Object.assign(this.state,{snapshot,next,rows:null});this.prepareMaps();this.renderMapping();
+        Object.assign(this.state,{snapshot,next,rows:null});await this.beginComparison();
     }
     prepareMaps(){
         const s=this.state;
@@ -130,39 +128,21 @@ export class Manager {
         s.base=entriesOf(s.baseWorld);s.mine=entriesOf(s.snapshot.world);s.nextEntries=entriesOf(s.nextWorld);
         s.maps={mine:matchEntries(s.base,s.mine),next:matchEntries(s.base,s.nextEntries)};
     }
-    renderMapping(){
-        this.content.classList.remove('cum-merge-page');
-        const s=this.state, unmatchedM=s.maps.mine.filter(i=>i<0).length, unmatchedN=s.maps.next.filter(i=>i<0).length;
-        const table=el('div',{class:'cum-mapping'});
-        table.append(el('div',{class:'cum-map-row cum-map-head'},el('strong',{},'旧原版条目'),el('strong',{},'对应我的条目'),el('strong',{},'对应作者新版条目')));
-        s.base.forEach((base,i)=>{
-            const selectors=['mine','next'].map(side=>{
-                const target=side==='mine'?s.mine:s.nextEntries;
-                const select=el('select',{'aria-label':`${title(base)} 对应${side==='mine'?'我的':'新版'}条目`},el('option',{value:'-1'},'不存在 / 已删除'));
-                const initial=s.maps[side][i];
-                if(initial>=0)select.append(el('option',{value:String(initial)},`${title(target[initial])} · #${target[initial].uid}`));
-                // Populate on focus, avoiding O(n²) option nodes for large worldbooks.
-                select.addEventListener('focus',()=>{const value=select.value;select.replaceChildren(el('option',{value:'-1'},'不存在 / 已删除'));target.forEach((e,index)=>select.append(el('option',{value:String(index)},`${title(e)} · #${e.uid}`)));select.value=value;},{once:true});
-                select.value=String(s.maps[side][i]);select.addEventListener('change',()=>s.maps[side][i]=Number(select.value));return el('label',{class:'cum-map-label'},el('span',{},side==='mine'?'对应我的条目':'对应作者新版条目'),select);
-            });
-            table.append(el('div',{class:'cum-map-row'},el('span',{},title(base)),...selectors));
-        });
-        const check=el('input',{type:'checkbox'});
-        const go=button('确认对应关系，查看差异',()=>this.run(async()=>{
-            s.rows=buildRows(s.base,s.mine,s.nextEntries,s.maps);s.selected=0;s.filter='changed';s.mobilePane='list';s.detailSource=null;await this.saveDraft();this.renderMerge();
-        }),{class:'cum-primary',disabled:true});
-        check.addEventListener('change',()=>go.disabled=!check.checked);
-        this.content.replaceChildren(this.nav(),el('h3',{},'核对条目对应关系'),el('p',{},`按唯一名称、正文和关键词预匹配。旧条目在当前版未匹配 ${unmatchedM} 条，在新版未匹配 ${unmatchedN} 条。改名或重建的条目请手动对应；确认不存在的保留“已删除”。未被对应的新条目将作为新增处理。`),table,
-            el('label',{class:'cum-check'},check,'我已核对对应关系；未对应的条目按新增或删除处理。'),el('div',{class:'cum-actions'},button('返回',()=>this.renderSetup()),go));
+    async beginComparison(){
+        this.prepareMaps();
+        const s=this.state;
+        s.rows=buildRows(s.base,s.mine,s.nextEntries,s.maps);
+        s.selected=0;s.filter='changed';s.mobilePane='list';
+        await this.saveDraft();this.renderMerge();
     }
     async saveDraft(){
         const s=this.state;
-        s.record={...s.record,draft:{snapshot:s.snapshot,next:s.next,maps:s.maps,rows:s.rows,savedAt:new Date().toISOString()}};
+        s.record={...s.record,draft:{textOnly:true,snapshot:s.snapshot,next:s.next,maps:s.maps,rows:s.rows,savedAt:new Date().toISOString()}};
         await this.store.put(s.card.avatar,s.record);
     }
     async resumeDraft(){
         const s=this.state,d=s.record.draft;
-        Object.assign(s,{snapshot:d.snapshot,next:d.next});this.prepareMaps();s.maps=d.maps;s.rows=d.rows;s.filter='changed';s.selected=0;s.mobilePane='list';s.detailSource=null;
+        Object.assign(s,{snapshot:d.snapshot,next:d.next});this.prepareMaps();s.maps=d.maps??s.maps;s.rows=buildRows(s.base,s.mine,s.nextEntries,s.maps);for(const row of s.rows){const old=d.rows?.find(r=>r.id===row.id);if(old&&row.type!=='unchanged'&&old.choice){row.choice=old.choice;row.custom=old.custom;}}s.filter='changed';s.selected=0;s.mobilePane='list';s.detailSource=null;
         this.renderMerge();this.say('草稿已恢复。应用前会检查当前卡和世界书是否发生变化。');
     }
     renderMerge(){
@@ -195,56 +175,36 @@ export class Manager {
         if(!visible.length)this.list.append(el('p',{class:'cum-empty'},'此分类没有条目。'));
         this.drawDetail();
     }
-    diffPanel(label,base,value){
-        const panel=el('section',{class:'cum-diff-panel','aria-label':label});
-        if(!value){panel.append(el('p',{},base?'此版本删除了该条目。下面是删除前的正文。':'此版本中没有该条目。'));if(base)panel.append(el('div',{class:'cum-before'},el('strong',{},'删除前 · 旧原版正文'),el('pre',{},pretty(base.content))));return panel;}
-        const fields=changedFields(base,value);
-        if(!fields.length)panel.append(el('p',{},'相对于作者旧原版没有变化。'),el('strong',{},'正文'),el('pre',{},value.content??'（空正文）'));
-        for(const field of fields){
-            const before=base?.[field],after=value[field];
-            const display=v=>field==='disable'?(v===undefined?'（不存在）':v?'禁用':'启用'):pretty(v);
-            const section=el('section',{class:'cum-field-change','data-field':field},el('h4',{},FIELD_NAMES[field]??field),
-                el('div',{class:'cum-before-after'},el('div',{class:'cum-before'},el('strong',{},'修改前 · 作者旧原版'),el('pre',{},display(before))),el('div',{class:'cum-after'},el('strong',{},'修改后 · '+(label==='作者更新'?'作者新版':'我的游玩版')),el('pre',{},display(after)))));
-            if(field==='content'){
-                const details=el('details',{class:'cum-inline-diff'},el('summary',{},'查看逐行增删标记'));
-                const diff=el('pre',{class:'cum-diff'});
-                for(const line of lineDiff(before??'',after??''))diff.append(el('span',{class:'cum-line '+line.kind},(line.kind==='add'?'+ ':line.kind==='remove'?'− ':'  ')+line.text+'\n'));
-                details.append(diff);section.append(details);
-            }
-            panel.append(section);
-        }return panel;
+    textPanel(label,base,value,side){
+        const panel=el('section',{class:'cum-text-panel cum-text-'+side,'aria-label':label},el('h4',{},label));
+        const paper=el('div',{class:'cum-paper'});
+        if(!value)panel.append(el('p',{},base?'此版本已删除该条目，划线内容为删除的原文。':'此版本中没有该条目。'));
+        for(const part of textDiff(base?.content??'',value?.content??'')){
+            const node=el(part.kind==='remove'?'del':part.kind==='add'?'ins':'span',{class:'cum-text-'+part.kind},part.text);
+            paper.append(node);
+        }
+        if(!paper.textContent)paper.append(el('span',{class:'cum-text-same'},'（空正文）'));
+        panel.append(paper);return panel;
     }
     drawDetail(){
-        const s=this.state,r=s.rows[s.selected];this.detail.replaceChildren();if(!r){this.detail.append(el('p',{class:'cum-empty'},'当前筛选下没有条目。请返回条目列表更换筛选。'));return;}
-        const choose=choice=>this.run(async()=>{r.choice=choice;s.detailSource='result';await this.saveDraft();this.renderMerge();});
+        const s=this.state,r=s.rows[s.selected];this.detail.replaceChildren();
+        if(!r){this.detail.append(el('p',{class:'cum-empty'},'当前筛选下没有正文差异。可在条目列表选择“全部条目”查看。'));return;}
+        const choose=choice=>this.run(async()=>{r.choice=choice;await this.saveDraft();this.renderMerge();});
         const at=this.visibleRows.indexOf(s.selected);
-        this.detail.append(el('div',{class:'cum-entry-nav'},button('上一条',()=>this.selectEntry(this.visibleRows[at-1]),{disabled:at<=0}),el('span',{},`${at+1} / ${this.visibleRows.length}`),button('下一条',()=>this.selectEntry(this.visibleRows[at+1]),{disabled:at>=this.visibleRows.length-1})),el('div',{class:'cum-detail-heading'},el('span',{class:'cum-badge'},LABELS[r.type]),el('h3',{},r.title)),
-            el('div',{class:'cum-actions'},button(r.next?'采用新版':'接受新版删除',()=>choose('next'),{'aria-pressed':String(r.choice==='next')}),button(r.mine?'保留我的':'保留我的删除',()=>choose('mine'),{'aria-pressed':String(r.choice==='mine')}),r.mine&&r.next?button('编辑合并',()=>this.editFields(r),{'aria-label':'分别选择字段 / 编辑'}):null),
-        );
-        const n=changedFields(r.base,r.next).length,m=changedFields(r.base,r.mine).length;
-        s.detailSource??=n?'next':m?'mine':'next';
-        const tabs=el('div',{class:'cum-source-tabs','aria-label':'差异来源'},...[[`作者更新 (${n})`,'next'],[`我的修改 (${m})`,'mine'],['合并结果','result']].map(([text,key])=>button(text,()=>{s.detailSource=key;this.drawDetail();this.detail.scrollTop=0;},{'aria-pressed':String(s.detailSource===key)})));
-        this.detail.append(tabs);
-        if(s.detailSource==='result'){
-            const entry=r.choice?selectedEntry(r):undefined;
-            this.detail.append(el('h4',{},'合并后的正文'),el('p',{},r.choice?(entry?'此内容将写入更新后的世界书。':'当前选择：删除此条目。'):'尚未选择，请先选择一个版本。'));
-            if(entry)this.detail.append(el('pre',{class:'cum-result-content'},entry.content??''),el('details',{},el('summary',{},'查看完整条目配置'),el('pre',{},pretty(entry))));
-        }else this.detail.append(this.diffPanel(s.detailSource==='next'?'作者更新':'我的修改',r.base,r[s.detailSource]));
+        this.detail.append(el('div',{class:'cum-entry-nav'},button('上一条',()=>this.selectEntry(this.visibleRows[at-1]),{disabled:at<=0}),el('span',{},`${at+1} / ${this.visibleRows.length}`),button('下一条',()=>this.selectEntry(this.visibleRows[at+1]),{disabled:at>=this.visibleRows.length-1})),
+            el('div',{class:'cum-detail-heading'},el('span',{class:'cum-badge'},LABELS[r.type]),el('h3',{},r.title)),
+            el('div',{class:'cum-actions'},button(r.mine?'保留我的正文':'保留我的删除',()=>choose('mine'),{'aria-pressed':String(r.choice==='mine')}),button(r.next?'采用新版正文':'接受新版删除',()=>choose('next'),{'aria-pressed':String(r.choice==='next')}),r.mine||r.next?button('编辑正文',()=>this.editFields(r)):null),
+            el('p',{class:'cum-text-legend'},'黑字：未修改 · 蓝字：我的改动 · 绿字：作者改动 · 划线：删除的原文'),
+            this.textPanel('我的版本',r.base,r.mine,'mine'),
+            this.textPanel('作者新版',r.base,r.next,'author'));
+        const entry=r.choice?selectedEntry(r):undefined;
+        this.detail.append(el('details',{class:'cum-result-preview'},el('summary',{},'合并结果预览'),el('pre',{class:'cum-result-content'},r.choice?(entry?.content??'（删除此条目）'):'尚未选择')));
     }
     editFields(row){
-        const custom=row.choice==='custom'?copy(row.custom):fieldMerge(row),fields=[...new Set([...Object.keys(cleanEntry(row.mine)),...Object.keys(cleanEntry(row.next))])];
-        const form=el('div',{class:'cum-field-form'},el('h3',{},'分别选择字段'),el('p',{},'正文可直接编辑。其他字段可选择来源；双方修改的字段默认显示新版，请逐项检查。'));
-        for(const field of fields){
-            if(equal(row.mine[field],row.next[field])&&field!=='content')continue;
-            const select=el('select',{'aria-label':`${FIELD_NAMES[field]??field} 的来源`},el('option',{value:'next'},'采用新版'),el('option',{value:'mine'},'保留我的'));
-            select.value=equal(custom[field],row.mine[field])?'mine':'next';
-            const current=el(field==='content'?'textarea':'pre',field==='content'?{'aria-label':'编辑最终正文',rows:'12'}:{});
-            const draw=()=>{if(field==='content')current.value=custom[field]??'';else current.textContent=pretty(custom[field]);};draw();
-            select.addEventListener('change',()=>{if(row[select.value][field]===undefined)delete custom[field];else custom[field]=copy(row[select.value][field]);draw();});
-            if(field==='content')current.addEventListener('input',()=>custom.content=current.value);
-            form.append(el('label',{},FIELD_NAMES[field]??field,select),current);
-        }
-        form.append(el('div',{class:'cum-actions'},button('取消',()=>this.drawDetail()),button('保存此条合并',()=>this.run(async()=>{row.custom=custom;row.choice='custom';this.state.detailSource='result';await this.saveDraft();this.renderMerge();}),{class:'cum-primary'})));
+        const current=row.choice==='custom'?row.custom.content:(row.mine?.content??row.next?.content??'');
+        const editor=el('textarea',{'aria-label':'编辑最终正文',rows:'14'});editor.value=current;
+        const form=el('div',{class:'cum-field-form'},el('h3',{},'编辑合并后的正文'),el('p',{},'这里只修改正文；开关、触发方式等配置采用作者新版。'),editor,
+            el('div',{class:'cum-actions'},button('取消',()=>this.drawDetail()),button('保存正文',()=>this.run(async()=>{row.custom={...copy(row.next??row.mine),content:editor.value};row.choice='custom';await this.saveDraft();this.renderMerge();}),{class:'cum-primary'})));
         this.detail.replaceChildren(form);
     }
     async prepareResult(){
@@ -261,7 +221,7 @@ export class Manager {
     async apply(){
         const s=this.state;
         const mine=s.rows.filter(r=>r.choice==='mine').length,next=s.rows.filter(r=>r.choice==='next').length,custom=s.rows.filter(r=>r.choice==='custom').length;
-        const text=`将覆盖“${s.card.name}”（${s.card.avatar}）。采用新版 ${next} 条，保留我的 ${mine} 条，自定义 ${custom} 条。开场白、描述、正则和脚本等其他卡内容采用作者新版。先创建恢复备份；旧世界书保留，合并世界书独立保存并绑定。完成后自动刷新酒馆。`;
+        const text=`将覆盖“${s.card.name}”（${s.card.avatar}）。采用新版 ${next} 条，保留我的 ${mine} 条，自定义 ${custom} 条。开关、触发方式等配置及开场白、描述、正则和脚本采用作者新版。先创建恢复备份；旧世界书保留，合并世界书独立保存并绑定。完成后自动刷新酒馆。`;
         if(!await this.confirm(text,'备份并覆盖更新'))return;
         const task=async()=>{
             const result=await this.prepareResult();

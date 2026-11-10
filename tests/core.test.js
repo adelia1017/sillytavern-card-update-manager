@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildRows,matchEntries,assembleWorld,fieldMerge,cleanEntry,toCharacterBook,normalizeCardWorld,lineDiff} from '../core.js';
+import {buildRows,matchEntries,assembleWorld,selectedEntry,cleanEntry,toCharacterBook,normalizeCardWorld,lineDiff,textDiff} from '../core.js';
 const entry=(comment,content,extra={})=>({uid:0,comment,content,key:[comment],disable:false,order:100,extensions:{},...extra});
 test('三方分类和默认选择：作者、玩家、双方、相同改动',()=>{
  const base=[entry('a','old'),entry('b','old'),entry('c','old'),entry('d','old')];
@@ -28,9 +28,12 @@ test('重复对应被拒绝，重复名称不盲目配对',()=>{
  assert.deepEqual(matchEntries(b,n),[-1,-1]);
  assert.throws(()=>buildRows(b,n,n,{mine:[0,0],next:[0,1]}),/不能同时对应/);
 });
-test('字段合并可同时保留玩家开关与新版正文',()=>{
- const row=buildRows([entry('a','old')],[entry('a','old',{disable:true})],[entry('a','new')])[0];
- const merged=fieldMerge(row);assert.equal(merged.content,'new');assert.equal(merged.disable,true);
+test('开关、蓝绿灯、关键词和顺序不计入差异，文本选择沿用新版配置',()=>{
+ const b=entry('a','old'),m=entry('a','old',{disable:true,constant:true,key:['mine'],order:999}),n=entry('a','old',{constant:false,key:['new']});
+ const row=buildRows([b],[m],[n])[0];assert.equal(row.type,'unchanged');
+ row.mine.content='my text';row.choice='mine';
+ const merged=selectedEntry(row);assert.equal(merged.content,'my text');assert.equal(merged.disable,false);assert.deepEqual(merged.key,['new']);
+ row.choice='custom';row.custom={...m,content:'custom'};assert.equal(selectedEntry(row).constant,false);
 });
 test('忽略 UID 和显示序号，扩展未知字段保留',()=>{
  assert.deepEqual(cleanEntry(entry('a','x',{uid:1,displayIndex:1})),cleanEntry(entry('a','x',{uid:99,displayIndex:99})));
@@ -52,3 +55,10 @@ test('合并保留作者新版 UID，仅对个人新增冲突 ID 分配新编号
  assert.equal(toCharacterBook(world).entries[0].id,8);
 });
 test('危险或异常条目 ID 拒绝',()=>assert.throws(()=>normalizeCardWorld({data:{character_book:{entries:[{id:'__proto__'}]}}},()=>{}),/安全整数/));
+test('内联差异保留原文和换行；不变文本无着色段',()=>{
+ for(const [a,b]of [['ABC\nDEF','ABC\nDEG\n123'],['年龄20','年龄25'],['','新条目'],['删除',''],['中文🌙\r\n末尾\n','中文🌟\r\n结尾\n'],['一'.repeat(2000),'二'.repeat(2000)]]){
+  const parts=textDiff(a,b);assert.equal(parts.filter(p=>p.kind!=='add').map(p=>p.text).join(''),a);assert.equal(parts.filter(p=>p.kind!=='remove').map(p=>p.text).join(''),b);
+ }
+ const same='一样\n'.repeat(5000);assert.deepEqual(textDiff(same,same),[{kind:'same',text:same}]);
+ assert.deepEqual(textDiff('ABC DEF','ABC DEG'),[{kind:'same',text:'ABC DE'},{kind:'remove',text:'F'},{kind:'add',text:'G'}]);
+});

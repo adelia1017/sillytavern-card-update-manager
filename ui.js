@@ -47,7 +47,7 @@ export class Manager {
         this.message=el('div',{class:'cum-message',role:'status','aria-live':'polite'});
         this.content=el('main',{class:'cum-content'});
         this.shell=el('div',{class:'cum-shell'},
-            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.11'))),
+            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.12'))),
                 button('关闭',()=>{if(!this.busy)this.dialog.close();},{class:'cum-quiet'})),this.message,this.content);
         this.dialog.append(this.shell);document.body.append(this.dialog);this.dialog.showModal();
         await this.run(()=>card?this.selectCard(card):this.home());
@@ -153,10 +153,24 @@ export class Manager {
         const s=this.state, pending=s.rows.filter(r=>!r.choice).length;
         const filter=el('select',{'aria-label':'筛选条目'},el('option',{value:'changed'},'按类型筛选'),el('option',{value:'pending'},`待处理（${pending}）`),el('option',{value:'all'},'全部条目'));
         for(const [key,label]of Object.entries(LABELS)){const count=s.rows.filter(r=>r.type===key).length;if(count)filter.append(el('option',{value:key},`${label}（${count}）`));}
-        filter.value=s.filter;filter.addEventListener('change',()=>{s.filter=filter.value;s.detailSource=null;this.renderMerge();});
+        const applyFilter=value=>{s.filter=value;s.detailSource=null;this.renderMerge();};
+        filter.value=s.filter;
+        filter.addEventListener('change',()=>applyFilter(filter.value));
+        const pendingOnly=s.filter==='pending';
+        const pendingButton=button(`${pending} 条待处理`,()=>{
+            applyFilter(pendingOnly?'changed':'pending');
+            this.content.querySelector('.cum-pending-filter')?.focus();
+        },{
+            class:'cum-pending-filter'+(pending?' has-pending':''),
+            'aria-pressed':String(pendingOnly),
+            'aria-label':`${pending} 条待处理，${pendingOnly?'清除待处理筛选':'只看待处理'}`,
+            title:pendingOnly?'清除待处理筛选':'只看待处理',
+            disabled:!pending&&!pendingOnly,
+        });
+        if(pendingOnly||pending)pendingButton.append(el('span',{},pendingOnly?'清除筛选':'只看待处理'));
         this.list=el('aside',{class:'cum-entry-list','aria-label':'世界书条目'});this.detail=el('section',{class:'cum-detail','aria-label':'条目差异详情',tabindex:'-1'});
         this.mobileTabs=el('div',{class:'cum-mobile-tabs','aria-label':'比较面板'},button('条目列表',()=>this.setMobilePane('list'),{'data-pane':'list'}),button('差异详情',()=>this.setMobilePane('detail'),{'data-pane':'detail'}));
-        this.content.replaceChildren(this.nav(),this.mobileTabs,el('div',{class:'cum-toolbar'},el('div',{class:'cum-merge-summary'},el('strong',{},`世界书 · ${s.rows.length} 条`),el('span',{},`${pending} 条待处理`)),filter),
+        this.content.replaceChildren(this.nav(),this.mobileTabs,el('div',{class:'cum-toolbar'},el('div',{class:'cum-merge-summary'},el('strong',{},`世界书 · ${s.rows.length} 条`),pendingButton),filter),
             s.twoWay?el('div',{class:'cum-two-way-tools'},el('p',{class:'cum-note'},'无旧原版：仅显示版本差异，无法判断修改来源。仅一侧存在的条目也需确认；无法可靠匹配的条目分开显示。'),el('div',{class:'cum-actions'},button(`剩余 ${pending} 条保留当前版`,()=>this.run(()=>this.resolvePending('mine')),{disabled:!pending}),button(`剩余 ${pending} 条采用新版`,()=>this.run(()=>this.resolvePending('next')),{disabled:!pending}))):el('span',{hidden:''}),el('div',{class:'cum-workspace'},this.list,this.detail),
             el('footer',{class:'cum-footer'},el('span',{},'其他卡内容采用作者新版；世界书沿用原名写回。'),el('div',{class:'cum-actions'},button('保存草稿',()=>this.run(async()=>{await this.saveDraft();this.say('草稿已保存。');})),button('检查并覆盖更新',()=>this.run(()=>this.apply()),{class:'cum-primary',disabled:!!pending}))));
         this.drawList();this.setMobilePane(s.mobilePane??'list');
@@ -177,7 +191,6 @@ export class Manager {
         for(const {r,i}of visible){const b=button('',()=>this.selectEntry(i),{class:'cum-entry'+(s.selected===i?' is-selected':''),'aria-pressed':String(s.selected===i)});b.append(el('strong',{},r.title),el('span',{},LABELS[r.type]),el('small',{},!r.choice?'待选择':r.choice==='mine'?(s.twoWay?'保留当前版':'保留我的'):r.choice==='next'?'采用新版':r.choice==='delete'?'删除':'自定义合并'));this.list.append(b);}
         if(!visible.length)this.list.append(el('p',{class:'cum-empty'},'此分类没有条目。'));
         this.drawDetail();
-        const active=this.list.querySelector('.is-selected');if(active&&this.list.scrollWidth>this.list.clientWidth)this.list.scrollLeft=active.offsetLeft-this.list.offsetLeft;
     }
     async resolvePending(choice){
         const count=this.state.rows.filter(r=>!r.choice).length;if(!count)return;
@@ -188,15 +201,32 @@ export class Manager {
     drawDetail(){
         this.comparisonView?.destroy();
         const s=this.state,r=s.rows[s.selected];this.detail.replaceChildren();
-        if(!r){this.detail.append(el('p',{class:'cum-empty'},'当前筛选下没有正文差异。可在条目列表选择“全部条目”查看。'));return;}
+        if(!r){this.detail.append(el('p',{class:'cum-empty'},s.filter==='pending'?'所有条目已处理。':'当前筛选下没有条目。可选择“全部条目”查看。'));return;}
         this.comparisonView=createComparison(r,{twoWay:!!s.twoWay});
         const choose=choice=>this.run(async()=>{r.choice=choice;await this.saveDraft();this.renderMerge();});
         const at=this.visibleRows.indexOf(s.selected);
-        this.detail.append(el('div',{class:'cum-detail-tools'},el('div',{class:'cum-entry-nav'},button('上一条',()=>this.selectEntry(this.visibleRows[at-1]),{disabled:at<=0}),el('span',{},`${at+1} / ${this.visibleRows.length}`),button('下一条',()=>this.selectEntry(this.visibleRows[at+1]),{disabled:at>=this.visibleRows.length-1})),
-            el('div',{class:'cum-detail-heading'},el('span',{class:'cum-badge'},LABELS[r.type]),el('h3',{},r.title)),
-            el('div',{class:'cum-actions'},button(s.twoWay?(r.mine?'保留当前正文':'当前版不含此条目'):r.mine?'保留我的正文':'保留我的删除',()=>choose('mine'),{'aria-pressed':String(r.choice==='mine')}),button(s.twoWay?(r.next?'采用新版正文':'新版不含此条目'):r.next?'采用新版正文':'接受新版删除',()=>choose('next'),{'aria-pressed':String(r.choice==='next')}),r.mine||r.next?button('编辑正文',()=>this.editFields(r)):null),
-            el('div',{class:'cum-display-toolbar'},this.comparisonView.controls)),
-            this.comparisonView.element);
+        const entrySelect=el('select',{class:'cum-entry-select','aria-label':'切换条目',title:r.title},
+            this.visibleRows.map(i=>el('option',{value:String(i)},s.rows[i].title)));
+        entrySelect.value=String(s.selected);
+        entrySelect.addEventListener('change',()=>{
+            this.selectEntry(Number(entrySelect.value));
+            this.detail.querySelector('.cum-entry-select')?.focus({preventScroll:true});
+        });
+        const heading=el('div',{class:'cum-detail-heading'},
+            el('h3',{class:'cum-mobile-entry-title'},r.title),entrySelect,
+            el('span',{class:'cum-badge'},LABELS[r.type]),
+            !r.choice?el('span',{class:'cum-pending-badge'},'待处理'):null);
+        const navigation=el('div',{class:'cum-entry-nav'},
+            button('上一条',()=>this.selectEntry(this.visibleRows[at-1]),{disabled:at<=0}),
+            el('span',{},`${at+1} / ${this.visibleRows.length}`),
+            button('下一条',()=>this.selectEntry(this.visibleRows[at+1]),{disabled:at>=this.visibleRows.length-1}));
+        const actions=el('div',{class:'cum-actions'},
+            button(s.twoWay?(r.mine?'保留当前正文':'当前版不含此条目'):r.mine?'保留我的正文':'保留我的删除',()=>choose('mine'),{'aria-pressed':String(r.choice==='mine')}),
+            button(s.twoWay?(r.next?'采用新版正文':'新版不含此条目'):r.next?'采用新版正文':'接受新版删除',()=>choose('next'),{'aria-pressed':String(r.choice==='next')}),
+            r.mine||r.next?button('编辑正文',()=>this.editFields(r)):null);
+        const tools=el('div',{class:'cum-detail-tools'},heading,
+            el('div',{class:'cum-detail-actions'},navigation,actions,this.comparisonView.controls));
+        this.detail.append(tools,this.comparisonView.element);
         const entry=r.choice?selectedEntry(r):undefined;
         this.detail.append(el('details',{class:'cum-result-preview'},el('summary',{},'合并结果预览'),el('pre',{class:'cum-result-content'},r.choice?(entry?.content??'（删除此条目）'):'尚未选择')));
     }

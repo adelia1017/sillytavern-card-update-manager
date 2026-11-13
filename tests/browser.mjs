@@ -55,7 +55,7 @@ try{
  if(!twoWay)await inputFile('导入旧原版',baseFile,'建立基线');
  await inputFile(twoWay?'没有旧原版，直接比较':'导入新版并比较',nextFile,'开始比较');
  assert.equal(await page.getByText('核对条目对应关系',{exact:true}).count(),0);
- await page.waitForSelector('.cum-entry');
+ await page.waitForSelector('.cum-entry-select');
  const types=await page.evaluate(()=>window.cumTest.manager.state.rows.map(r=>r.type));assert.ok(types.includes(twoWay?'different':'both'));assert.ok(types.includes(twoWay?'currentOnly':'mineAdded'));
  if(twoWay){assert.ok(await page.getByRole('button',{name:'检查并覆盖更新'}).isDisabled());await page.evaluate(async()=>{const m=window.cumTest.manager;delete m.state.record.baseline;await m.saveDraft();await m.selectCard(m.state.card);await m.resumeDraft();if(!m.state.twoWay||m.state.record.baseline)throw Error('Draft mode lost');});}
  if(twoWay){
@@ -68,12 +68,12 @@ try{
   await page.screenshot({path:path.join(root,'two-way-mobile.png')});
   await page.setViewportSize({width:1440,height:1000});
  }
- await page.locator('.cum-entry').filter({hasText:'向导'}).click();await page.getByRole('button',{name:twoWay?'保留当前正文':'保留我的正文',exact:true}).click();
+ await page.getByRole('combobox',{name:'切换条目'}).selectOption({label:'向导'});await page.getByRole('button',{name:twoWay?'保留当前正文':'保留我的正文',exact:true}).click();
  await page.getByRole('button',{name:'编辑正文',exact:true}).click();
  await page.getByRole('textbox',{name:'编辑最终正文'}).fill('年龄：25\n职业：资深向导');
  await page.getByRole('button',{name:'保存正文',exact:true}).click();
  if(twoWay){
-   await page.locator('.cum-entry').filter({hasText:'私有笔记'}).click();await page.getByRole('button',{name:'保留当前正文',exact:true}).click();
+   await page.getByRole('combobox',{name:'切换条目'}).selectOption({label:'私有笔记'});await page.getByRole('button',{name:'保留当前正文',exact:true}).click();
    const retained=await page.evaluate(()=>window.cumTest.manager.state.rows.find(r=>r.title==='向导').custom.content);
    await page.getByRole('button',{name:/剩余 .* 条采用新版/}).click();await page.getByRole('button',{name:'应用批量选择',exact:true}).click();
    assert.equal(await page.evaluate(()=>window.cumTest.manager.state.rows.find(r=>r.title==='向导').custom.content),retained);

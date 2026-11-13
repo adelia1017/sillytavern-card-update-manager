@@ -5,7 +5,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE??'playwright');
-const root=path.resolve('test-results/mobile-v0.1.11');await fs.mkdir(root,{recursive:true});
+const root=path.resolve('test-results/mobile-v0.1.12');await fs.mkdir(root,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const widths=[[320,568],[360,640],[390,844],[430,932],[844,390],[1440,1000]];
 try{
@@ -44,10 +44,26 @@ try{
   });
   const mobile=width<=760||height<=500&&width<=1000;
   if(mobile){assert.equal(await page.locator('.cum-detail').isVisible(),false);assert.equal(await page.locator('.cum-entry-list').isVisible(),true);}
-  await page.locator('.cum-entry').filter({hasText:'向导设定'}).click();
+  const selectEntry=async title=>{
+   if(mobile)await page.locator('.cum-entry').filter({has:page.getByText(title,{exact:true})}).click();
+   else await page.getByRole('combobox',{name:'切换条目'}).selectOption({label:title});
+  };
+  const pending=page.getByRole('button',{name:'1 条待处理，只看待处理'});
+  await pending.click();
+  assert.equal(await page.getByRole('combobox',{name:'筛选条目'}).inputValue(),'pending');
+  await page.getByRole('button',{name:'1 条待处理，清除待处理筛选'}).click();
+  assert.equal(await page.getByRole('combobox',{name:'筛选条目'}).inputValue(),'changed');
+  await page.getByRole('combobox',{name:'筛选条目'}).selectOption('all');
+  if(mobile)await selectEntry('向导设定');
+  else{
+   assert.equal(await page.locator('.cum-entry-list').isVisible(),false);
+   assert.equal(await page.getByRole('combobox',{name:'切换条目'}).locator('option:checked').textContent(),'向导设定');
+   await page.getByRole('button',{name:'下一条',exact:true}).click();
+   assert.equal(await page.getByRole('combobox',{name:'切换条目'}).locator('option:checked').textContent(),'条目 1');
+   await selectEntry('向导设定');
+  }
   if(mobile){assert.equal(await page.locator('.cum-entry-list').isVisible(),false);assert.equal(await page.locator('.cum-detail').isVisible(),true);}
   const visible=async locator=>{await locator.scrollIntoViewIfNeeded();assert.equal(await locator.isVisible(),true);const box=await locator.boundingBox();assert.ok(box&&box.width>0&&box.y+box.height>0&&box.y<height);};
-  if(!mobile){const listBox=await page.locator('.cum-entry-list').boundingBox(),detailBox=await page.locator('.cum-detail').boundingBox();assert.ok(listBox.y+listBox.height<=detailBox.y+2);assert.ok(Math.abs(listBox.width-detailBox.width)<3);}
   const minePanel=page.locator('.cum-text-panel.cum-text-mine'),authorPanel=page.locator('.cum-text-panel.cum-text-author');
   const contents=async panel=>panel.locator('.cum-paper').evaluate(e=>{const c=e.cloneNode(true);c.querySelectorAll('del').forEach(n=>n.remove());return c.textContent;});
   assert.equal(await contents(minePanel),'年龄：25\n职业：向导\n我的修改末行');
@@ -72,13 +88,13 @@ try{
   await page.getByText('合并结果预览',{exact:true}).click();
   await visible(page.locator('.cum-result-content').filter({hasText:'我的修改末行'}));
   if(mobile)await page.getByRole('button',{name:'条目列表',exact:true}).click();
-  await page.locator('.cum-entry strong').filter({hasText:/^条目 1$/}).click();
+  await selectEntry('条目 1');
   assert.equal(await authorPanel.locator('ins,del').count(),0);
   assert.equal(await minePanel.locator('ins,del').count(),0);
   assert.equal(await authorPanel.locator('.cum-text-same').first().evaluate(e=>getComputedStyle(e).color),'rgb(34, 34, 34)');
   assert.equal(await page.evaluate(()=>window.testManager.state.rows.find(r=>r.title==='条目 1').type),'unchanged');
   if(mobile)await page.getByRole('button',{name:'条目列表',exact:true}).click();
-  await page.locator('.cum-entry strong').filter({hasText:/^条目 3$/}).click();
+  await selectEntry('条目 3');
   // Long text stays within a fixed-height, independently scrollable pane.
   await page.locator('.cum-detail').evaluate(e=>{e.scrollTop=e.scrollHeight;});
   const bottom=await page.locator('.cum-detail').evaluate(e=>e.scrollTop+e.clientHeight>=e.scrollHeight-2);assert.ok(bottom);
@@ -87,7 +103,7 @@ try{
   await pane.evaluate(e=>{e.scrollTop=e.scrollHeight;});assert.equal(await pane.evaluate(e=>e.scrollTop+e.clientHeight>=e.scrollHeight-2),true);
   if(mobile)assert.equal(await minePanel.locator('.cum-paper').evaluate(e=>e.scrollTop),0);
   if(mobile)await page.getByRole('button',{name:'条目列表',exact:true}).click();
-  await page.locator('.cum-entry strong').filter({hasText:/^条目 5$/}).click();
+  await selectEntry('条目 5');
   await visible(authorPanel.locator('.cum-paper'));
   assert.equal(await authorPanel.locator('.cum-diff-text').textContent(),'');
   assert.deepEqual(errors.filter(e=>e.includes('card-update-manager')),[]);

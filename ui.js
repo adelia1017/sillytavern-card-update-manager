@@ -1,4 +1,5 @@
-import {copy,entriesOf,matchEntries,buildRows,buildTwoWayRows,LABELS,selectedEntry,assembleWorld,toCharacterBook,normalizeCardWorld,sentenceDiff} from './core.js';
+import {createComparison} from './diff-view.js';
+import {copy,entriesOf,matchEntries,buildRows,buildTwoWayRows,LABELS,selectedEntry,assembleWorld,toCharacterBook,normalizeCardWorld} from './core.js';
 import {readCardFile,packCard,download,bytesToBase64,base64ToBytes,parseJSON} from './card.js';
 import {applyUpdate} from './host.js';
 
@@ -42,11 +43,11 @@ export class Manager {
         this.previousFocus=document.activeElement;
         this.dialog=el('dialog',{class:'cum-dialog','aria-labelledby':'cum-title'});
         this.dialog.addEventListener('cancel',e=>{if(this.busy)e.preventDefault();});
-        this.dialog.addEventListener('close',()=>{this.previousFocus?.focus();this.dialog.remove();});
+        this.dialog.addEventListener('close',()=>{this.comparisonView?.destroy();this.previousFocus?.focus();this.dialog.remove();});
         this.message=el('div',{class:'cum-message',role:'status','aria-live':'polite'});
         this.content=el('main',{class:'cum-content'});
         this.shell=el('div',{class:'cum-shell'},
-            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.7'))),
+            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.8'))),
                 button('关闭',()=>{if(!this.busy)this.dialog.close();},{class:'cum-quiet'})),this.message,this.content);
         this.dialog.append(this.shell);document.body.append(this.dialog);this.dialog.showModal();
         const pref=await this.store.get('@preferences');this.fontSize=Math.min(20,Math.max(10,Number(pref?.fontSize)||12));this.dialog.style.setProperty('--cum-reading-size',this.fontSize+'px');await this.run(()=>card?this.selectCard(card):this.home());
@@ -68,6 +69,7 @@ export class Manager {
         });dlg.remove();return answer;
     }
     async home(){
+        this.comparisonView?.destroy();
         this.content.classList.remove('cum-merge-page');
         this.state={};const cards=await this.host.list();
         const records=await Promise.all(cards.map(c=>this.store.get(c.avatar)));
@@ -99,6 +101,7 @@ export class Manager {
         return el('div',{class:'cum-heading cum-nav'},el('div',{class:'cum-nav-title'},button('← 角色列表',()=>this.run(()=>this.home()),{class:'cum-quiet'}),el('div',{class:'cum-character-name'},el('h3',{},this.state.card.name),el('small',{},this.state.card.avatar))),el('details',{class:'cum-more'},el('summary',{},'更多'),actions));
     }
     renderSetup(){
+        this.comparisonView?.destroy();
         this.content.classList.remove('cum-merge-page');
         const s=this.state;
         const steps=el('div',{class:'cum-steps'},
@@ -182,25 +185,6 @@ export class Manager {
         for(const r of this.state.rows)if(!r.choice)r.choice=choice;
         await this.saveDraft();this.renderMerge();
     }
-    textPanel(label,base,value,side){
-        const panel=el('section',{class:'cum-text-panel cum-text-'+side,'aria-label':label},el('h4',{},label));
-        const paper=el('div',{class:'cum-paper',tabindex:'0',role:'region','aria-label':label+'正文，可滚动'});
-        if(!value)panel.append(el('p',{},this.state.twoWay?'此版本中没有该条目。':base?'此版本已删除该条目，划线内容为删除的原文。':'此版本中没有该条目。'));
-        for(const block of sentenceDiff(base?.content??'',value?.content??'')){
-            if(block.kind==='same'){paper.append(el('span',{class:'cum-text-same'},block.text));continue;}
-            for(const [kind,text] of [['remove',block.old],['add',block.next]]){
-                if(!text||this.state.twoWay&&kind==='remove')continue;
-                const sentence=el(kind==='remove'?'del':'ins',{class:'cum-sentence cum-text-'+kind});
-                for(const part of block.parts){
-                    if(part.kind===(kind==='remove'?'add':'remove'))continue;
-                    sentence.append(el('span',{class:part.kind==='same'?'cum-text-same':'cum-highlight'},part.text));
-                }
-                paper.append(sentence);
-            }
-        }
-        if(!paper.textContent)paper.append(el('span',{class:'cum-text-same'},'（空正文）'));
-        panel.append(paper);return panel;
-    }
     fontControl(){
         const output=el('output',{},this.fontSize+'px');
         const input=el('input',{type:'range',min:'10',max:'20',step:'1',value:String(this.fontSize),'aria-label':'对比字号'});
@@ -209,16 +193,17 @@ export class Manager {
         return el('label',{class:'cum-font-control'},'字号',input,output);
     }
     drawDetail(){
+        this.comparisonView?.destroy();
         const s=this.state,r=s.rows[s.selected];this.detail.replaceChildren();
         if(!r){this.detail.append(el('p',{class:'cum-empty'},'当前筛选下没有正文差异。可在条目列表选择“全部条目”查看。'));return;}
+        this.comparisonView=createComparison(r,{twoWay:!!s.twoWay,mode:this.diffMode??'focus',onMode:mode=>{this.diffMode=mode;}});
         const choose=choice=>this.run(async()=>{r.choice=choice;await this.saveDraft();this.renderMerge();});
         const at=this.visibleRows.indexOf(s.selected);
         this.detail.append(el('div',{class:'cum-entry-nav'},button('上一条',()=>this.selectEntry(this.visibleRows[at-1]),{disabled:at<=0}),el('span',{},`${at+1} / ${this.visibleRows.length}`),button('下一条',()=>this.selectEntry(this.visibleRows[at+1]),{disabled:at>=this.visibleRows.length-1})),
             el('div',{class:'cum-detail-heading'},el('span',{class:'cum-badge'},LABELS[r.type]),el('h3',{},r.title)),
             el('div',{class:'cum-actions'},button(s.twoWay?(r.mine?'保留当前正文':'当前版不含此条目'):r.mine?'保留我的正文':'保留我的删除',()=>choose('mine'),{'aria-pressed':String(r.choice==='mine')}),button(s.twoWay?(r.next?'采用新版正文':'新版不含此条目'):r.next?'采用新版正文':'接受新版删除',()=>choose('next'),{'aria-pressed':String(r.choice==='next')}),r.mine||r.next?button('编辑正文',()=>this.editFields(r)):null),
-            this.fontControl(),el('p',{class:'cum-text-legend'},s.twoWay?'蓝底：当前版差异 · 绿底：新版差异；底色不代表修改来源。':'蓝底：我的改动 · 绿底：作者改动 · 删除线：修改前的原句'),
-            el('div',{class:'cum-comparison'},this.textPanel(s.twoWay?'当前版本':'我的版本',s.twoWay?r.next:r.base,r.mine,'mine'),
-            this.textPanel('作者新版',s.twoWay?r.mine:r.base,r.next,'author')));
+            el('div',{class:'cum-display-toolbar'},this.fontControl(),this.comparisonView.controls),el('p',{class:'cum-text-legend'},s.twoWay?'蓝底：当前版差异 · 绿底：新版差异；底色不代表修改来源。':'蓝色：我的修改 · 绿色：作者修改 · 灰色删除线：删除内容'),
+            this.comparisonView.element);
         const entry=r.choice?selectedEntry(r):undefined;
         this.detail.append(el('details',{class:'cum-result-preview'},el('summary',{},'合并结果预览'),el('pre',{class:'cum-result-content'},r.choice?(entry?.content??'（删除此条目）'):'尚未选择')));
     }

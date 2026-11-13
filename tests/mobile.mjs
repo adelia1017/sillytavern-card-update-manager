@@ -5,7 +5,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE??'playwright');
-const root=path.resolve('test-results/mobile-v0.1.7');await fs.mkdir(root,{recursive:true});
+const root=path.resolve('test-results/mobile-v0.1.8');await fs.mkdir(root,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const widths=[[320,568],[360,640],[390,844],[430,932],[844,390],[1440,1000]];
 try{
@@ -54,13 +54,13 @@ try{
   assert.equal(await contents(authorPanel),'年龄：22\n职业：资深向导\n作者新版末行');
   for(const [bg,fg] of [['#171717','#eeeeee'],['#ffffff','#222222']]){
    await page.evaluate(({bg,fg})=>{document.documentElement.style.setProperty('--SmartThemeChatTintColor',bg);document.documentElement.style.setProperty('--SmartThemeBodyColor',fg);}, {bg,fg});
-   const colors=await minePanel.locator('.cum-paper').evaluate(e=>({bg:getComputedStyle(e).backgroundColor,fg:getComputedStyle(e.querySelector('ins')).color}));
+   const colors=await minePanel.locator('.cum-paper').evaluate(e=>({bg:getComputedStyle(e).backgroundColor,fg:getComputedStyle(e.querySelector('.cum-text-same')).color}));
    assert.equal(colors.bg,bg==='#ffffff'?'rgb(255, 255, 255)':'rgb(23, 23, 23)');
    assert.equal(colors.fg,fg==='#eeeeee'?'rgb(238, 238, 238)':'rgb(34, 34, 34)');
   }
   await page.evaluate(()=>{document.documentElement.style.setProperty('--SmartThemeBlurTintColor','#f4f4f4');document.documentElement.style.setProperty('--SmartThemeBorderColor','#cccccc');});
-  assert.equal(await authorPanel.locator('ins').first().evaluate(e=>getComputedStyle(e).color),'rgb(34, 34, 34)');
-  assert.notEqual(await minePanel.locator('.cum-highlight').first().evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)');
+  assert.notEqual(await authorPanel.locator('ins').first().evaluate(e=>getComputedStyle(e).color),'rgb(34, 34, 34)');
+  assert.notEqual(await minePanel.locator('.is-changed').first().evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)');
   assert.equal(await minePanel.locator('.cum-paper').evaluate(e=>getComputedStyle(e).fontSize),'12px');
   await page.getByRole('slider',{name:'对比字号'}).fill('14');
   assert.equal(await minePanel.locator('.cum-paper').evaluate(e=>getComputedStyle(e).fontSize),'14px');
@@ -78,7 +78,7 @@ try{
   await page.locator('.cum-entry strong').filter({hasText:/^条目 1$/}).click();
   assert.equal(await authorPanel.locator('ins,del').count(),0);
   assert.equal(await minePanel.locator('ins,del').count(),0);
-  assert.equal(await authorPanel.locator('.cum-text-same').evaluate(e=>getComputedStyle(e).color),'rgb(34, 34, 34)');
+  assert.equal(await authorPanel.locator('.cum-text-same').first().evaluate(e=>getComputedStyle(e).color),'rgb(34, 34, 34)');
   assert.equal(await page.evaluate(()=>window.testManager.state.rows.find(r=>r.title==='条目 1').type),'unchanged');
   if(mobile)await page.getByRole('button',{name:'条目列表',exact:true}).click();
   await page.locator('.cum-entry strong').filter({hasText:/^条目 3$/}).click();

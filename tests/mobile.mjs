@@ -5,7 +5,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE??'playwright');
-const root=path.resolve('test-results/mobile-v0.1.6');await fs.mkdir(root,{recursive:true});
+const root=path.resolve('test-results/mobile-v0.1.7');await fs.mkdir(root,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const widths=[[320,568],[360,640],[390,844],[430,932],[844,390],[1440,1000]];
 try{
@@ -47,6 +47,7 @@ try{
   await page.locator('.cum-entry').filter({hasText:'向导设定'}).click();
   if(mobile){assert.equal(await page.locator('.cum-entry-list').isVisible(),false);assert.equal(await page.locator('.cum-detail').isVisible(),true);}
   const visible=async locator=>{await locator.scrollIntoViewIfNeeded();assert.equal(await locator.isVisible(),true);const box=await locator.boundingBox();assert.ok(box&&box.width>0&&box.y+box.height>0&&box.y<height);};
+  if(!mobile){const listBox=await page.locator('.cum-entry-list').boundingBox(),detailBox=await page.locator('.cum-detail').boundingBox();assert.ok(listBox.y+listBox.height<=detailBox.y+2);assert.ok(Math.abs(listBox.width-detailBox.width)<3);}
   const minePanel=page.locator('.cum-text-panel.cum-text-mine'),authorPanel=page.locator('.cum-text-panel.cum-text-author');
   const contents=async panel=>panel.locator('.cum-paper').evaluate(e=>{const c=e.cloneNode(true);c.querySelectorAll('del').forEach(n=>n.remove());return c.textContent;});
   assert.equal(await contents(minePanel),'年龄：25\n职业：向导\n我的修改末行');

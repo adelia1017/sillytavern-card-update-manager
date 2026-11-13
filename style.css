@@ -154,3 +154,15 @@
  .cum-comparison{grid-template-columns:minmax(0,1fr);gap:10px}
  .cum-dialog .cum-comparison .cum-paper{height:220px;height:clamp(160px,30dvh,280px)}
 }
+
+@media(min-width:761px){
+ .cum-merge-page .cum-workspace{grid-template-columns:minmax(0,1fr);grid-template-rows:112px minmax(0,1fr)}
+ .cum-merge-page .cum-entry-list{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;border-right:0;border-bottom:1px solid var(--cum-border);padding:8px;scrollbar-gutter:auto}
+ .cum-dialog .cum-entry-list button.cum-entry{flex:0 0 180px;width:180px;height:84px;margin:0;padding:8px 10px;gap:2px}
+ .cum-entry-list .cum-entry strong{width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .cum-entry-list .cum-entry span,.cum-entry-list .cum-entry small{white-space:nowrap}
+}
+@media(max-height:500px) and (max-width:1000px){
+ .cum-merge-page .cum-entry-list{display:block;overflow-y:auto;overflow-x:hidden;border-bottom:0}
+ .cum-dialog .cum-entry-list button.cum-entry{width:100%;height:auto;margin-bottom:6px}
+}

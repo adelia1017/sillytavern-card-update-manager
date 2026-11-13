@@ -46,7 +46,7 @@ export class Manager {
         this.message=el('div',{class:'cum-message',role:'status','aria-live':'polite'});
         this.content=el('main',{class:'cum-content'});
         this.shell=el('div',{class:'cum-shell'},
-            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.6'))),
+            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.7'))),
                 button('关闭',()=>{if(!this.busy)this.dialog.close();},{class:'cum-quiet'})),this.message,this.content);
         this.dialog.append(this.shell);document.body.append(this.dialog);this.dialog.showModal();
         const pref=await this.store.get('@preferences');this.fontSize=Math.min(20,Math.max(10,Number(pref?.fontSize)||12));this.dialog.style.setProperty('--cum-reading-size',this.fontSize+'px');await this.run(()=>card?this.selectCard(card):this.home());
@@ -174,6 +174,7 @@ export class Manager {
         for(const {r,i}of visible){const b=button('',()=>this.selectEntry(i),{class:'cum-entry'+(s.selected===i?' is-selected':''),'aria-pressed':String(s.selected===i)});b.append(el('strong',{},r.title),el('span',{},LABELS[r.type]),el('small',{},!r.choice?'待选择':r.choice==='mine'?(s.twoWay?'保留当前版':'保留我的'):r.choice==='next'?'采用新版':r.choice==='delete'?'删除':'自定义合并'));this.list.append(b);}
         if(!visible.length)this.list.append(el('p',{class:'cum-empty'},'此分类没有条目。'));
         this.drawDetail();
+        const active=this.list.querySelector('.is-selected');if(active&&this.list.scrollWidth>this.list.clientWidth)this.list.scrollLeft=active.offsetLeft-this.list.offsetLeft;
     }
     async resolvePending(choice){
         const count=this.state.rows.filter(r=>!r.choice).length;if(!count)return;

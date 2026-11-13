@@ -5,7 +5,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE??'playwright');
-const root=path.resolve('test-results/mobile-v0.1.3');await fs.mkdir(root,{recursive:true});
+const root=path.resolve('test-results/mobile-v0.1.6');await fs.mkdir(root,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const widths=[[320,568],[360,640],[390,844],[430,932],[844,390],[1440,1000]];
 try{
@@ -51,14 +51,20 @@ try{
   const contents=async panel=>panel.locator('.cum-paper').evaluate(e=>{const c=e.cloneNode(true);c.querySelectorAll('del').forEach(n=>n.remove());return c.textContent;});
   assert.equal(await contents(minePanel),'年龄：25\n职业：向导\n我的修改末行');
   assert.equal(await contents(authorPanel),'年龄：22\n职业：资深向导\n作者新版末行');
-  assert.equal(await minePanel.locator('ins').first().evaluate(e=>getComputedStyle(e).color),'rgb(21, 21, 21)');
-  assert.equal(await authorPanel.locator('ins').first().evaluate(e=>getComputedStyle(e).color),'rgb(21, 21, 21)');
-  assert.equal(await minePanel.locator('.cum-highlight').first().evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(204, 228, 255)');
+  for(const [bg,fg] of [['#171717','#eeeeee'],['#ffffff','#222222']]){
+   await page.evaluate(({bg,fg})=>{document.documentElement.style.setProperty('--SmartThemeChatTintColor',bg);document.documentElement.style.setProperty('--SmartThemeBodyColor',fg);}, {bg,fg});
+   const colors=await minePanel.locator('.cum-paper').evaluate(e=>({bg:getComputedStyle(e).backgroundColor,fg:getComputedStyle(e.querySelector('ins')).color}));
+   assert.equal(colors.bg,bg==='#ffffff'?'rgb(255, 255, 255)':'rgb(23, 23, 23)');
+   assert.equal(colors.fg,fg==='#eeeeee'?'rgb(238, 238, 238)':'rgb(34, 34, 34)');
+  }
+  await page.evaluate(()=>{document.documentElement.style.setProperty('--SmartThemeBlurTintColor','#f4f4f4');document.documentElement.style.setProperty('--SmartThemeBorderColor','#cccccc');});
+  assert.equal(await authorPanel.locator('ins').first().evaluate(e=>getComputedStyle(e).color),'rgb(34, 34, 34)');
+  assert.notEqual(await minePanel.locator('.cum-highlight').first().evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)');
   assert.equal(await minePanel.locator('.cum-paper').evaluate(e=>getComputedStyle(e).fontSize),'12px');
   await page.getByRole('slider',{name:'对比字号'}).fill('14');
   assert.equal(await minePanel.locator('.cum-paper').evaluate(e=>getComputedStyle(e).fontSize),'14px');
   await page.getByRole('slider',{name:'对比字号'}).fill('12');
-  assert.ok((await authorPanel.boundingBox()).y>(await minePanel.boundingBox()).y);
+  const mb=await minePanel.boundingBox(),ab=await authorPanel.boundingBox();if(mobile)assert.ok(ab.y>mb.y);else {assert.ok(ab.x>mb.x);assert.ok(Math.abs(ab.y-mb.y)<2);}
   assert.equal(await minePanel.locator('del').first().evaluate(e=>getComputedStyle(e).textDecorationLine),'line-through');
   await visible(minePanel.locator('.cum-paper'));
   const footer=page.getByRole('button',{name:'检查并覆盖更新'});const fb=await footer.boundingBox();assert.ok(fb&&fb.y>=0&&fb.y+fb.height<=height+1,'Footer must remain in viewport');
@@ -71,20 +77,22 @@ try{
   await page.locator('.cum-entry strong').filter({hasText:/^条目 1$/}).click();
   assert.equal(await authorPanel.locator('ins,del').count(),0);
   assert.equal(await minePanel.locator('ins,del').count(),0);
-  assert.equal(await authorPanel.locator('.cum-text-same').evaluate(e=>getComputedStyle(e).color),'rgb(21, 21, 21)');
+  assert.equal(await authorPanel.locator('.cum-text-same').evaluate(e=>getComputedStyle(e).color),'rgb(34, 34, 34)');
   assert.equal(await page.evaluate(()=>window.testManager.state.rows.find(r=>r.title==='条目 1').type),'unchanged');
   if(mobile)await page.getByRole('button',{name:'条目列表',exact:true}).click();
   await page.locator('.cum-entry strong').filter({hasText:/^条目 3$/}).click();
-  // Touch-like scroll through long content, without nested pre scroll containers.
+  // Long text stays within a fixed-height, independently scrollable pane.
   await page.locator('.cum-detail').evaluate(e=>{e.scrollTop=e.scrollHeight;});
   const bottom=await page.locator('.cum-detail').evaluate(e=>e.scrollTop+e.clientHeight>=e.scrollHeight-2);assert.ok(bottom);
   assert.ok(await authorPanel.locator('.cum-paper').textContent().then(t=>t.includes('长正文末尾')));
-  assert.equal(await authorPanel.locator('.cum-paper').evaluate(e=>e.clientHeight>=e.scrollHeight),true);
+  const pane=authorPanel.locator('.cum-paper');assert.equal(await pane.evaluate(e=>e.clientHeight<e.scrollHeight),true);
+  await pane.evaluate(e=>{e.scrollTop=e.scrollHeight;});assert.equal(await pane.evaluate(e=>e.scrollTop+e.clientHeight>=e.scrollHeight-2),true);
+  assert.equal(await minePanel.locator('.cum-paper').evaluate(e=>e.scrollTop),0);
   if(mobile)await page.getByRole('button',{name:'条目列表',exact:true}).click();
   await page.locator('.cum-entry strong').filter({hasText:/^条目 5$/}).click();
   await visible(authorPanel.locator('del').filter({hasText:'旧设定 5'}));
   assert.deepEqual(errors.filter(e=>e.includes('card-update-manager')),[]);
-  console.log(`PASS ${width}x${height}: list/detail navigation, stacked text/colors, result, settings ignored, deletion, long text, visible footer`);
+  console.log(`PASS ${width}x${height}: list/detail navigation, responsive panes/theme colors, result, settings ignored, deletion, long text, visible footer`);
   await context.close();
  }
 }finally{await browser.close();}

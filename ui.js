@@ -46,7 +46,7 @@ export class Manager {
         this.message=el('div',{class:'cum-message',role:'status','aria-live':'polite'});
         this.content=el('main',{class:'cum-content'});
         this.shell=el('div',{class:'cum-shell'},
-            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.5'))),
+            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.6'))),
                 button('关闭',()=>{if(!this.busy)this.dialog.close();},{class:'cum-quiet'})),this.message,this.content);
         this.dialog.append(this.shell);document.body.append(this.dialog);this.dialog.showModal();
         const pref=await this.store.get('@preferences');this.fontSize=Math.min(20,Math.max(10,Number(pref?.fontSize)||12));this.dialog.style.setProperty('--cum-reading-size',this.fontSize+'px');await this.run(()=>card?this.selectCard(card):this.home());
@@ -154,7 +154,7 @@ export class Manager {
         this.list=el('aside',{class:'cum-entry-list','aria-label':'世界书条目'});this.detail=el('section',{class:'cum-detail','aria-label':'条目差异详情',tabindex:'-1'});
         this.mobileTabs=el('div',{class:'cum-mobile-tabs','aria-label':'比较面板'},button('条目列表',()=>this.setMobilePane('list'),{'data-pane':'list'}),button('差异详情',()=>this.setMobilePane('detail'),{'data-pane':'detail'}));
         this.content.replaceChildren(this.nav(),this.mobileTabs,el('div',{class:'cum-toolbar'},el('div',{class:'cum-merge-summary'},el('strong',{},`世界书 · ${s.rows.length} 条`),el('span',{},`${pending} 条待处理`)),filter),
-            s.twoWay?el('div',{class:'cum-two-way-tools'},el('p',{class:'cum-note'},'无旧原版：仅显示版本差异，无法判断修改来源。仅一侧存在的条目也需确认；无法可靠匹配的条目分开显示。'),el('div',{class:'cum-actions'},button(`剩余 ${pending} 条保留当前版`,()=>this.run(()=>this.resolvePending('mine')),{disabled:!pending}),button(`剩余 ${pending} 条采用新版`,()=>this.run(()=>this.resolvePending('next')),{disabled:!pending}))):null,el('div',{class:'cum-workspace'},this.list,this.detail),
+            s.twoWay?el('div',{class:'cum-two-way-tools'},el('p',{class:'cum-note'},'无旧原版：仅显示版本差异，无法判断修改来源。仅一侧存在的条目也需确认；无法可靠匹配的条目分开显示。'),el('div',{class:'cum-actions'},button(`剩余 ${pending} 条保留当前版`,()=>this.run(()=>this.resolvePending('mine')),{disabled:!pending}),button(`剩余 ${pending} 条采用新版`,()=>this.run(()=>this.resolvePending('next')),{disabled:!pending}))):el('span',{hidden:''}),el('div',{class:'cum-workspace'},this.list,this.detail),
             el('footer',{class:'cum-footer'},el('span',{},'其他卡内容采用作者新版；世界书沿用原名写回。'),el('div',{class:'cum-actions'},button('保存草稿',()=>this.run(async()=>{await this.saveDraft();this.say('草稿已保存。');})),button('检查并覆盖更新',()=>this.run(()=>this.apply()),{class:'cum-primary',disabled:!!pending}))));
         this.drawList();this.setMobilePane(s.mobilePane??'list');
     }
@@ -183,7 +183,7 @@ export class Manager {
     }
     textPanel(label,base,value,side){
         const panel=el('section',{class:'cum-text-panel cum-text-'+side,'aria-label':label},el('h4',{},label));
-        const paper=el('div',{class:'cum-paper'});
+        const paper=el('div',{class:'cum-paper',tabindex:'0',role:'region','aria-label':label+'正文，可滚动'});
         if(!value)panel.append(el('p',{},this.state.twoWay?'此版本中没有该条目。':base?'此版本已删除该条目，划线内容为删除的原文。':'此版本中没有该条目。'));
         for(const block of sentenceDiff(base?.content??'',value?.content??'')){
             if(block.kind==='same'){paper.append(el('span',{class:'cum-text-same'},block.text));continue;}
@@ -216,8 +216,8 @@ export class Manager {
             el('div',{class:'cum-detail-heading'},el('span',{class:'cum-badge'},LABELS[r.type]),el('h3',{},r.title)),
             el('div',{class:'cum-actions'},button(s.twoWay?(r.mine?'保留当前正文':'当前版不含此条目'):r.mine?'保留我的正文':'保留我的删除',()=>choose('mine'),{'aria-pressed':String(r.choice==='mine')}),button(s.twoWay?(r.next?'采用新版正文':'新版不含此条目'):r.next?'采用新版正文':'接受新版删除',()=>choose('next'),{'aria-pressed':String(r.choice==='next')}),r.mine||r.next?button('编辑正文',()=>this.editFields(r)):null),
             this.fontControl(),el('p',{class:'cum-text-legend'},s.twoWay?'蓝底：当前版差异 · 绿底：新版差异；底色不代表修改来源。':'蓝底：我的改动 · 绿底：作者改动 · 删除线：修改前的原句'),
-            this.textPanel(s.twoWay?'当前版本':'我的版本',s.twoWay?r.next:r.base,r.mine,'mine'),
-            this.textPanel('作者新版',s.twoWay?r.mine:r.base,r.next,'author'));
+            el('div',{class:'cum-comparison'},this.textPanel(s.twoWay?'当前版本':'我的版本',s.twoWay?r.next:r.base,r.mine,'mine'),
+            this.textPanel('作者新版',s.twoWay?r.mine:r.base,r.next,'author')));
         const entry=r.choice?selectedEntry(r):undefined;
         this.detail.append(el('details',{class:'cum-result-preview'},el('summary',{},'合并结果预览'),el('pre',{class:'cum-result-content'},r.choice?(entry?.content??'（删除此条目）'):'尚未选择')));
     }

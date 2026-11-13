@@ -1,5 +1,5 @@
 // Presentation only: no entry classification, choices, saved records or merge operations.
-import {sentenceDiff,textDiff} from './core.js';
+import {sameContent,sentenceDiff,textDiff} from './core.js';
 
 function sentenceEdits(before,after,position=0){
     return sentenceDiff(before,after).flatMap(part=>{
@@ -107,7 +107,7 @@ export function displayBlocks(base,mine,next,twoWay=false){
 
 function node(tag,className,text){const e=document.createElement(tag);e.className=className;if(text!==undefined)e.textContent=text;return e;}
 function button(text,action){const e=node('button','',text);e.type='button';e.addEventListener('click',action);return e;}
-export function createComparison(row,{twoWay=false,mode='focus',onMode=()=>{}}={}){
+export function createComparison(row,{twoWay=false}={}){
     const blocks=displayBlocks(row.base?.content,row.mine?.content,row.next?.content,twoWay);
     const expanded=new Set();
     const element=node('div','cum-comparison cum-diff-view');
@@ -124,29 +124,38 @@ export function createComparison(row,{twoWay=false,mode='focus',onMode=()=>{}}={
         });
     };
     const observer=new ResizeObserver(align);
-    function syncScroll(event){
-        if(mobile.matches)return;
-        const source=event.currentTarget;
-        const target=papers.find(paper=>paper!==source);
-        if(target&&Math.abs(target.scrollTop-source.scrollTop)>1)target.scrollTop=source.scrollTop;
+    function jumpTo(index,side){
+        const target=pairs[index]?.[1-side];
+        if(!target)return;
+        element.querySelector('.cum-diff-target')?.classList.remove('cum-diff-target');
+        target.classList.add('cum-diff-target');
+        if(mobile.matches)target.scrollIntoView({block:'center'});
+        else{
+            const paper=papers[1-side];
+            paper.scrollTop+=target.getBoundingClientRect().top-paper.getBoundingClientRect().top-12;
+        }
     }
     for(const [side,label]of [['mine',twoWay?'当前版本':'我的版本'],['next','作者新版']]){
         const panel=node('section','cum-text-panel cum-text-'+(side==='mine'?'mine':'author'));panel.setAttribute('aria-label',label);
         panel.append(node('h4','',label));
         const paper=node('div','cum-paper');paper.tabIndex=0;paper.role='region';paper.setAttribute('aria-label',label+'正文，可滚动');
         panel.append(paper);element.append(panel);papers.push(paper);
-        paper.addEventListener('scroll',syncScroll);
         observer.observe(paper);
     }
     const foldable=block=>block.kind==='same'&&(block.base.length>180||block.base.split('\n').length>5);
-    const focus=button('差异聚焦',()=>{mode='focus';onMode(mode);render();});
-    const full=button('完整正文',()=>{mode='full';onMode(mode);render();});
     const expand=button('全部展开相同段落',()=>{blocks.forEach((b,i)=>{if(foldable(b))expanded.add(i);});render();});
-    controls.append(focus,full,expand);
+    controls.append(expand);
+    if(!twoWay&&row.base&&['both','same'].includes(row.type)){
+        const original=node('details','cum-original');
+        original.append(node('summary','','原文'));
+        const paper=node('pre','cum-original-text',row.base.content);
+        paper.tabIndex=0;paper.setAttribute('aria-label','作者旧版原文');
+        original.append(paper);
+        element.insertBefore(original,element.lastElementChild);
+    }
     function render(){
         observer.disconnect();papers.forEach(p=>{p.replaceChildren();observer.observe(p);});pairs.length=0;
-        focus.setAttribute('aria-pressed',String(mode==='focus'));full.setAttribute('aria-pressed',String(mode==='full'));
-        expand.disabled=mode==='full'||!blocks.some((b,i)=>foldable(b)&&!expanded.has(i));
+        expand.disabled=!blocks.some((b,i)=>foldable(b)&&!expanded.has(i));
         blocks.forEach((block,index)=>{
             const pair=[];
             for(let sideIndex=0;sideIndex<2;sideIndex++){
@@ -154,29 +163,38 @@ export function createComparison(row,{twoWay=false,mode='focus',onMode=()=>{}}={
                 const wrapper=node('div','cum-diff-row');wrapper.dataset.block=String(index);
                 const content=node('div','cum-diff-block');
                 wrapper.append(content);pair.push(wrapper);
-                if(mode==='focus'&&foldable(block)&&!expanded.has(index)){
+                if(foldable(block)&&!expanded.has(index)){
                     const toggle=button('··· 相同段落 ···',()=>{expanded.add(index);render();});
                     toggle.className='cum-same-toggle';toggle.setAttribute('aria-expanded','false');content.append(toggle);
                 }else{
-                    const value=block[side],changed=block.kind==='change'&&(twoWay?block.mine!==block.next:value!==block.base);
-                    if(changed)content.classList.add('is-changed');
+                    const value=block[side],changed=block.kind==='change'&&(twoWay?!sameContent(block.mine,block.next):!sameContent(value,block.base));
+                    if(changed){
+                        content.classList.add('is-changed');
+                        content.tabIndex=0;
+                        content.setAttribute('role','button');
+                        content.setAttribute('aria-label','跳到另一栏的对应段落');
+                        content.addEventListener('click',()=>{if(!getSelection()?.toString())jumpTo(index,sideIndex);});
+                        content.addEventListener('keydown',event=>{
+                            if(event.key==='Enter'||event.key===' '){event.preventDefault();jumpTo(index,sideIndex);}
+                        });
+                    }
                     const text=node('div','cum-diff-text');
                     if(!value&&!block.base){text.append(node('span','cum-diff-placeholder',block.kind==='same'?'（空正文）':'此处无新增内容'));}
                     else if(!changed){text.append(node('span','cum-text-same',value));}
                     else if(twoWay){
                         for(const part of textDiff(block.mine,block.next)){
                             if(part.kind===(side==='mine'?'add':'remove'))continue;
-                            text.append(node('span',part.kind==='same'?'cum-text-same':'cum-diff-added',part.text));
+                            text.append(node('span',part.kind==='same'||sameContent(part.text,'')?'cum-text-same':'cum-diff-added',part.text));
                         }
                         if(!text.textContent)text.append(node('span','cum-diff-placeholder','此处无内容'));
                     }else{
                         for(const part of textDiff(block.base,value)){
                             if(part.kind==='remove')continue;
-                            text.append(node(part.kind==='add'?'ins':'span',part.kind==='add'?'cum-diff-added':'cum-text-same',part.text));
+                            text.append(node(part.kind==='add'?'ins':'span',part.kind==='add'&&!sameContent(part.text,'')?'cum-diff-added':'cum-text-same',part.text));
                         }
                     }
                     content.append(text);
-                    if(mode==='focus'&&foldable(block)){
+                    if(foldable(block)){
                         const toggle=button('收起相同段落',()=>{expanded.delete(index);render();});toggle.className='cum-same-toggle';toggle.setAttribute('aria-expanded','true');content.append(toggle);
                     }
                 }

@@ -64,10 +64,14 @@ export const LABELS = {
     bothDeleted:'双方删除', additionConflict:'双方新增同名条目',
     different:'正文不同', currentOnly:'仅当前版存在', newOnly:'仅新版存在',
 };
+export function sameContent(a,b){
+    return a===b||a.replace(/\p{P}/gu,'')===b.replace(/\p{P}/gu,'');
+}
+
 export function buildTwoWayRows(mine,next){
     const map=matchEntries(mine,next),used=new Set(map),rows=[];
     const add=(m,n,id)=>{
-        const type=!m?'newOnly':!n?'currentOnly':m.content===n.content?'unchanged':'different';
+        const type=!m?'newOnly':!n?'currentOnly':sameContent(m.content,n.content)?'unchanged':'different';
         rows.push({id,mine:copy(m),next:copy(n),type,choice:type==='unchanged'?'next':null,title:n?.comment||m?.comment||`未命名条目 ${id}`});
     };
     mine.forEach((m,i)=>add(m,next[map[i]],`m${i}`));
@@ -75,12 +79,12 @@ export function buildTwoWayRows(mine,next){
     return rows;
 }
 export function classify(base, mine, next) {
-    if (!base) return mine && next ? (mine.content===next.content ? 'same':'additionConflict') : mine ? 'mineAdded':'authorAdded';
+    if (!base) return mine && next ? (sameContent(mine.content,next.content) ? 'same':'additionConflict') : mine ? 'mineAdded':'authorAdded';
     if (!mine && !next) return 'bothDeleted';
-    if (!mine) return base.content===next.content ? 'mineDeleted':'both';
-    if (!next) return base.content===mine.content ? 'authorDeleted':'both';
-    const m = base.content!==mine.content, n = base.content!==next.content;
-    return !m && !n ? 'unchanged' : m && n ? (mine.content===next.content ? 'same':'both') : m ? 'mine':'author';
+    if (!mine) return sameContent(base.content,next.content) ? 'mineDeleted':'both';
+    if (!next) return sameContent(base.content,mine.content) ? 'authorDeleted':'both';
+    const m = !sameContent(base.content,mine.content), n = !sameContent(base.content,next.content);
+    return !m && !n ? 'unchanged' : m && n ? (sameContent(mine.content,next.content) ? 'same':'both') : m ? 'mine':'author';
 }
 export function buildRows(base, mine, next, maps = {}) {
     const mm = maps.mine ?? matchEntries(base,mine), nm = maps.next ?? matchEntries(base,next);

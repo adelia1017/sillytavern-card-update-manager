@@ -4,7 +4,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE??'playwright');
-const root=path.resolve('test-results/diff-v0.1.10');await fs.mkdir(root,{recursive:true});
+const root=path.resolve('test-results/diff-v0.1.11');await fs.mkdir(root,{recursive:true});
 const demo=await Promise.all(['01-author-original','02-player-modified','03-author-update'].map(async n=>JSON.parse(await fs.readFile('../../03_results/card-update-manager/demo-cards-v2/'+n+'.json','utf8'))));
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
@@ -36,28 +36,29 @@ try{
   assert.equal(await left.getByRole('button',{name:'收起相同段落',exact:true}).count(),1);assert.equal(await right.getByRole('button',{name:'收起相同段落',exact:true}).count(),1);await checkAlign();
   await page.getByRole('button',{name:'全部展开相同段落',exact:true}).click();await page.waitForTimeout(250);
   assert.equal(await page.getByRole('button',{name:'··· 相同段落 ···',exact:true}).count(),0);await checkAlign();
-  await page.getByRole('button',{name:'完整正文',exact:true}).click();await page.waitForTimeout(250);
-  assert.equal(await page.locator('.cum-diff-view del,.cum-diff-removed').count(),0);
-  if(width>=761){
-   for(const [source,target] of [[left,right],[right,left]]){
-    const top=await source.evaluate(e=>{e.scrollTop+=160;return e.scrollTop;});
-    assert.ok(top>0);
-    await target.evaluate((e,top)=>new Promise((resolve,reject)=>{
-     const deadline=performance.now()+1000;
-     function check(){if(Math.abs(e.scrollTop-top)<=1)resolve();else if(performance.now()>deadline)reject(new Error('双栏滚动位置不一致'));else requestAnimationFrame(check);}
-     check();
-    }),top);
-   }
-  }
+  assert.equal(await page.locator('.cum-diff-view del').count(),0);
+  const original=page.locator('.cum-original');
+  assert.equal(await original.evaluate(e=>e.open),false);
+  await original.locator('summary').click();
+  assert.equal(await original.locator('pre').textContent(),demo[0].data.character_book.entries.find(e=>e.comment.startsWith('34 ')).content);
+  await original.locator('summary').click();
+  const order=await page.locator('.cum-diff-view').evaluate(e=>Array.from(e.children,x=>x.className));
+  assert.ok(order[0].includes('cum-text-mine')&&order[1].includes('cum-original')&&order[2].includes('cum-text-author'));
+  await left.evaluate(e=>{e.scrollTop=160;});
+  await page.waitForTimeout(150);
+  assert.equal(await right.evaluate(e=>e.scrollTop),0);
+  const source=left.locator('.is-changed').nth(4);
+  const id=await source.evaluate(e=>e.parentElement.dataset.block);
+  await source.evaluate(e=>e.click());
+  const target=right.locator('[data-block="'+id+'"]');
+  assert.ok(await target.evaluate(e=>e.classList.contains('cum-diff-target')));
+  if(width>=761)assert.ok(await right.evaluate(e=>e.scrollTop)>0);
   const highlight=await left.locator('.cum-diff-added').first().evaluate(e=>({word:getComputedStyle(e).backgroundColor,block:getComputedStyle(e.closest('.cum-diff-block')).backgroundColor,color:getComputedStyle(e).color}));assert.notEqual(highlight.word,highlight.block);assert.notEqual(highlight.word,'rgba(0, 0, 0, 0)');
   const text=async p=>p.evaluate(e=>{const c=e.cloneNode(true);c.querySelectorAll('del,.cum-diff-placeholder,button').forEach(x=>x.remove());return [...c.querySelectorAll('.cum-diff-text')].map(x=>x.textContent).join('');});
   assert.equal(await text(left),demo[1].data.character_book.entries.find(e=>e.comment.startsWith('34 ')).content);
   assert.equal(await text(right),demo[2].data.character_book.entries.find(e=>e.comment.startsWith('34 ')).content);
-  await page.getByRole('slider',{name:'对比字号'}).fill('16');await page.waitForTimeout(250);await checkAlign();
-  await page.getByRole('slider',{name:'对比字号'}).fill('12');
   assert.equal(await page.evaluate(()=>JSON.stringify(window.manager.state.rows)===window.originalRows),true);
   // A fresh view resets individually expanded sections, keeping the selected display mode.
-  await page.getByRole('button',{name:'差异聚焦',exact:true}).click();
   await page.evaluate(()=>window.manager.drawDetail());await page.waitForTimeout(150);
   await page.locator('.cum-detail').evaluate(e=>{e.scrollTop=0;});
   await page.screenshot({path:path.join(root,`${dark?'dark':'light'}-${width}.png`)});

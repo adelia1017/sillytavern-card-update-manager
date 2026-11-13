@@ -193,3 +193,36 @@
  .cum-dialog .cum-diff-view .cum-diff-block{padding:8px}
  .cum-dialog .cum-diff-controls button{min-height:36px}
 }
+
+.cum-dialog .cum-diff-view .is-changed{cursor:pointer}
+.cum-dialog .cum-diff-view .cum-diff-target>.cum-diff-block{outline:1px solid var(--cum-accent);outline-offset:-1px}
+.cum-dialog .cum-diff-view .cum-original{min-width:0;margin:0;padding:0;border:0;background:var(--cum-panel)}
+.cum-dialog .cum-original summary{padding:8px 10px;white-space:nowrap;background:var(--cum-button)}
+.cum-dialog .cum-original-text{margin:0;padding:12px;height:clamp(240px,58dvh,650px);max-height:none;overflow:auto;background:var(--cum-panel);color:var(--cum-text);font:12px/1.6 system-ui,'Microsoft YaHei',sans-serif;overscroll-behavior:contain}
+@media(min-width:761px) and (min-height:501px),(min-width:1001px){
+ .cum-dialog:has(.cum-merge-page) .cum-header{padding:5px 12px}
+ .cum-dialog .cum-merge-page{padding:8px 12px 0}
+ .cum-merge-page>.cum-heading{margin-bottom:2px}
+ .cum-merge-page .cum-toolbar{padding:4px 0}
+ .cum-dialog .cum-merge-page :is(button,select){min-height:30px;padding:4px 8px}
+ .cum-merge-page .cum-workspace{grid-template-rows:66px minmax(0,1fr)}
+ .cum-merge-page .cum-entry-list{padding:3px 6px;gap:4px}
+ .cum-dialog .cum-entry-list button.cum-entry{height:48px;gap:0;padding:2px 8px;font-size:12px;line-height:1.2}
+ .cum-entry-list .cum-entry span,.cum-entry-list .cum-entry small{font-size:11px}
+ .cum-merge-page .cum-detail{padding:6px 10px}
+ .cum-detail-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+ .cum-detail-tools :is(.cum-entry-nav,.cum-display-toolbar){margin:0;gap:5px}
+ .cum-detail-tools .cum-detail-heading{display:flex;align-items:center;gap:6px;margin-right:auto}
+ .cum-detail-tools .cum-detail-heading h3{margin:0;font-size:15px}
+ .cum-dialog .cum-diff-view{margin:6px 0}
+ .cum-dialog .cum-diff-view .cum-paper{height:clamp(240px,58dvh,650px)}
+ .cum-dialog .cum-diff-view:has(.cum-original){grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}
+ .cum-dialog .cum-diff-view:has(.cum-original[open]){grid-template-columns:repeat(3,minmax(0,1fr))}
+ .cum-dialog .cum-diff-view .cum-original{border-inline:1px solid var(--cum-border)}
+ .cum-dialog .cum-diff-view :is(h4,.cum-original summary){padding:6px 10px;min-height:30px}
+ .cum-merge-page .cum-footer{padding:6px 0}
+}
+@media(max-width:760px),(max-height:500px) and (max-width:1000px){
+ .cum-dialog .cum-diff-view .cum-original{border-block:1px solid var(--cum-border)}
+ .cum-dialog .cum-original-text{height:clamp(160px,30dvh,280px)}
+}

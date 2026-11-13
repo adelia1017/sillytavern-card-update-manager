@@ -5,7 +5,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE??'playwright');
-const root=path.resolve('test-results/mobile-v0.1.10');await fs.mkdir(root,{recursive:true});
+const root=path.resolve('test-results/mobile-v0.1.11');await fs.mkdir(root,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const widths=[[320,568],[360,640],[390,844],[430,932],[844,390],[1440,1000]];
 try{
@@ -62,9 +62,6 @@ try{
   assert.notEqual(await authorPanel.locator('ins').first().evaluate(e=>getComputedStyle(e).color),'rgb(34, 34, 34)');
   assert.notEqual(await minePanel.locator('.is-changed').first().evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)');
   assert.equal(await minePanel.locator('.cum-paper').evaluate(e=>getComputedStyle(e).fontSize),'12px');
-  await page.getByRole('slider',{name:'对比字号'}).fill('14');
-  assert.equal(await minePanel.locator('.cum-paper').evaluate(e=>getComputedStyle(e).fontSize),'14px');
-  await page.getByRole('slider',{name:'对比字号'}).fill('12');
   const mb=await minePanel.boundingBox(),ab=await authorPanel.boundingBox();if(mobile)assert.ok(ab.y>mb.y);else {assert.ok(ab.x>mb.x);assert.ok(Math.abs(ab.y-mb.y)<2);}
   assert.equal(await page.locator('.cum-diff-view del').count(),0);
   await visible(minePanel.locator('.cum-paper'));

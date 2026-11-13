@@ -2,6 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildRows,buildTwoWayRows,matchEntries,assembleWorld,selectedEntry,cleanEntry,toCharacterBook,normalizeCardWorld,lineDiff,textDiff,sentenceDiff} from '../core.js';
 const entry=(comment,content,extra={})=>({uid:0,comment,content,key:[comment],disable:false,order:100,extensions:{},...extra});
+test('纯标点变化不计为差异，正文和换行变化仍可识别',()=>{
+ const base=entry('设定','你好，世界！'),mine=entry('设定','你好,世界。');
+ assert.equal(buildRows([base],[mine],[base])[0].type,'unchanged');
+ assert.equal(buildTwoWayRows([mine],[base])[0].type,'unchanged');
+ const next=entry('设定','你好，星港！');
+ const row=buildRows([base],[mine],[next])[0];
+ assert.equal(row.type,'author');assert.equal(selectedEntry(row).content,next.content);
+ assert.equal(buildTwoWayRows([base],[entry('设定','你好，\n世界！')])[0].type,'different');
+});
 test('无旧版：差异均待决定，配置差异忽略，不推断新增删除来源',()=>{
  const mine=[entry('相同','same'),entry('差异','current'),entry('独有','private')];
  const next=[entry('相同','same',{disable:true}),entry('差异','updated'),entry('新版独有','new')];

@@ -180,10 +180,10 @@
 .cum-dialog .cum-diff-view .cum-diff-row{margin-bottom:14px}
 .cum-dialog .cum-diff-view .cum-diff-block{padding:9px 11px;border-left:3px solid transparent;line-height:1.75}
 .cum-dialog .cum-diff-view .cum-diff-text{white-space:pre-wrap;overflow-wrap:anywhere}
-.cum-dialog .cum-diff-view .cum-text-mine{--cum-diff-color:color-mix(in srgb,#519de4 60%,var(--cum-text));--cum-diff-tint:color-mix(in srgb,#5099dc 13%,var(--cum-panel));--cum-diff-line:#538abe}
-.cum-dialog .cum-diff-view .cum-text-author{--cum-diff-color:color-mix(in srgb,#59b98b 60%,var(--cum-text));--cum-diff-tint:color-mix(in srgb,#4bb57b 13%,var(--cum-panel));--cum-diff-line:#43966a}
+.cum-dialog .cum-diff-view .cum-text-mine{--cum-diff-color:color-mix(in srgb,#519de4 60%,var(--cum-text));--cum-diff-tint:color-mix(in srgb,#5099dc 13%,var(--cum-panel));--cum-diff-line:#538abe;--cum-word-tint:color-mix(in srgb,#5099dc 30%,var(--cum-panel))}
+.cum-dialog .cum-diff-view .cum-text-author{--cum-diff-color:color-mix(in srgb,#59b98b 60%,var(--cum-text));--cum-diff-tint:color-mix(in srgb,#4bb57b 13%,var(--cum-panel));--cum-diff-line:#43966a;--cum-word-tint:color-mix(in srgb,#4bb57b 30%,var(--cum-panel))}
 .cum-dialog .cum-diff-view .is-changed{background:var(--cum-diff-tint);border-left-color:var(--cum-diff-line)}
-.cum-dialog .cum-diff-view .cum-paper .cum-diff-added{color:var(--cum-diff-color)!important;font-weight:600!important;text-decoration:none;background:transparent}
+.cum-dialog .cum-diff-view .cum-paper .cum-diff-added{color:var(--cum-diff-color)!important;font-weight:600!important;text-decoration:none;background:var(--cum-word-tint);border-radius:2px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
 .cum-dialog .cum-diff-view .cum-paper .cum-diff-removed{color:color-mix(in srgb,var(--cum-text) 62%,var(--cum-panel))!important;text-decoration:line-through;text-decoration-color:currentColor}
 .cum-dialog .cum-diff-view .cum-paper .cum-diff-placeholder{display:block;text-align:center;color:color-mix(in srgb,var(--cum-text) 65%,var(--cum-panel))!important;padding:10px 0}
 .cum-dialog .cum-diff-view .cum-paper .cum-same-toggle{display:block;width:100%;min-height:34px;font-size:12px!important;color:color-mix(in srgb,var(--cum-text) 65%,var(--cum-panel))!important;background:transparent;border:0;text-align:center;padding:7px;cursor:pointer}

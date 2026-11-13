@@ -97,7 +97,10 @@ export function createComparison(row,{twoWay=false,mode='focus',onMode=()=>{}}={
                         }
                         if(!text.textContent)text.append(node('span','cum-diff-placeholder','此处无内容'));
                     }else{
-                        for(const part of textDiff(block.base,value))text.append(node(part.kind==='remove'?'del':part.kind==='add'?'ins':'span',part.kind==='remove'?'cum-diff-removed':part.kind==='add'?'cum-diff-added':'cum-text-same',part.text));
+                        for(const part of textDiff(block.base,value)){
+                            if(part.kind==='remove')continue;
+                            text.append(node(part.kind==='add'?'ins':'span',part.kind==='add'?'cum-diff-added':'cum-text-same',part.text));
+                        }
                     }
                     content.append(text);
                     if(mode==='focus'&&foldable(block)){

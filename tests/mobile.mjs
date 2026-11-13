@@ -5,7 +5,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE??'playwright');
-const root=path.resolve('test-results/mobile-v0.1.8');await fs.mkdir(root,{recursive:true});
+const root=path.resolve('test-results/mobile-v0.1.9');await fs.mkdir(root,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const widths=[[320,568],[360,640],[390,844],[430,932],[844,390],[1440,1000]];
 try{
@@ -66,7 +66,7 @@ try{
   assert.equal(await minePanel.locator('.cum-paper').evaluate(e=>getComputedStyle(e).fontSize),'14px');
   await page.getByRole('slider',{name:'对比字号'}).fill('12');
   const mb=await minePanel.boundingBox(),ab=await authorPanel.boundingBox();if(mobile)assert.ok(ab.y>mb.y);else {assert.ok(ab.x>mb.x);assert.ok(Math.abs(ab.y-mb.y)<2);}
-  assert.equal(await minePanel.locator('del').first().evaluate(e=>getComputedStyle(e).textDecorationLine),'line-through');
+  assert.equal(await page.locator('.cum-diff-view del').count(),0);
   await visible(minePanel.locator('.cum-paper'));
   const footer=page.getByRole('button',{name:'检查并覆盖更新'});const fb=await footer.boundingBox();assert.ok(fb&&fb.y>=0&&fb.y+fb.height<=height+1,'Footer must remain in viewport');
   assert.equal(await page.evaluate(()=>document.querySelector('.cum-dialog').scrollWidth<=document.querySelector('.cum-dialog').clientWidth+1),true);
@@ -91,7 +91,8 @@ try{
   assert.equal(await minePanel.locator('.cum-paper').evaluate(e=>e.scrollTop),0);
   if(mobile)await page.getByRole('button',{name:'条目列表',exact:true}).click();
   await page.locator('.cum-entry strong').filter({hasText:/^条目 5$/}).click();
-  await visible(authorPanel.locator('del').filter({hasText:'旧设定 5'}));
+  await visible(authorPanel.locator('.cum-paper'));
+  assert.equal(await authorPanel.locator('.cum-diff-text').textContent(),'');
   assert.deepEqual(errors.filter(e=>e.includes('card-update-manager')),[]);
   console.log(`PASS ${width}x${height}: list/detail navigation, responsive panes/theme colors, result, settings ignored, deletion, long text, visible footer`);
   await context.close();

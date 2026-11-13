@@ -5,7 +5,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE??'playwright');
-const root=path.resolve('test-results/mobile-v0.1.9');await fs.mkdir(root,{recursive:true});
+const root=path.resolve('test-results/mobile-v0.1.10');await fs.mkdir(root,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const widths=[[320,568],[360,640],[390,844],[430,932],[844,390],[1440,1000]];
 try{
@@ -88,7 +88,7 @@ try{
   assert.ok(await authorPanel.locator('.cum-paper').textContent().then(t=>t.includes('长正文末尾')));
   const pane=authorPanel.locator('.cum-paper');assert.equal(await pane.evaluate(e=>e.clientHeight<e.scrollHeight),true);
   await pane.evaluate(e=>{e.scrollTop=e.scrollHeight;});assert.equal(await pane.evaluate(e=>e.scrollTop+e.clientHeight>=e.scrollHeight-2),true);
-  assert.equal(await minePanel.locator('.cum-paper').evaluate(e=>e.scrollTop),0);
+  if(mobile)assert.equal(await minePanel.locator('.cum-paper').evaluate(e=>e.scrollTop),0);
   if(mobile)await page.getByRole('button',{name:'条目列表',exact:true}).click();
   await page.locator('.cum-entry strong').filter({hasText:/^条目 5$/}).click();
   await visible(authorPanel.locator('.cum-paper'));

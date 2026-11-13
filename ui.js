@@ -47,7 +47,7 @@ export class Manager {
         this.message=el('div',{class:'cum-message',role:'status','aria-live':'polite'});
         this.content=el('main',{class:'cum-content'});
         this.shell=el('div',{class:'cum-shell'},
-            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.9'))),
+            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.10'))),
                 button('关闭',()=>{if(!this.busy)this.dialog.close();},{class:'cum-quiet'})),this.message,this.content);
         this.dialog.append(this.shell);document.body.append(this.dialog);this.dialog.showModal();
         const pref=await this.store.get('@preferences');this.fontSize=Math.min(20,Math.max(10,Number(pref?.fontSize)||12));this.dialog.style.setProperty('--cum-reading-size',this.fontSize+'px');await this.run(()=>card?this.selectCard(card):this.home());

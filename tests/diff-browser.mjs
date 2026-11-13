@@ -4,7 +4,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE??'playwright');
-const root=path.resolve('test-results/diff-v0.1.9');await fs.mkdir(root,{recursive:true});
+const root=path.resolve('test-results/diff-v0.1.10');await fs.mkdir(root,{recursive:true});
 const demo=await Promise.all(['01-author-original','02-player-modified','03-author-update'].map(async n=>JSON.parse(await fs.readFile('../../03_results/card-update-manager/demo-cards-v2/'+n+'.json','utf8'))));
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
@@ -38,6 +38,17 @@ try{
   assert.equal(await page.getByRole('button',{name:'··· 相同段落 ···',exact:true}).count(),0);await checkAlign();
   await page.getByRole('button',{name:'完整正文',exact:true}).click();await page.waitForTimeout(250);
   assert.equal(await page.locator('.cum-diff-view del,.cum-diff-removed').count(),0);
+  if(width>=761){
+   for(const [source,target] of [[left,right],[right,left]]){
+    const top=await source.evaluate(e=>{e.scrollTop+=160;return e.scrollTop;});
+    assert.ok(top>0);
+    await target.evaluate((e,top)=>new Promise((resolve,reject)=>{
+     const deadline=performance.now()+1000;
+     function check(){if(Math.abs(e.scrollTop-top)<=1)resolve();else if(performance.now()>deadline)reject(new Error('双栏滚动位置不一致'));else requestAnimationFrame(check);}
+     check();
+    }),top);
+   }
+  }
   const highlight=await left.locator('.cum-diff-added').first().evaluate(e=>({word:getComputedStyle(e).backgroundColor,block:getComputedStyle(e.closest('.cum-diff-block')).backgroundColor,color:getComputedStyle(e).color}));assert.notEqual(highlight.word,highlight.block);assert.notEqual(highlight.word,'rgba(0, 0, 0, 0)');
   const text=async p=>p.evaluate(e=>{const c=e.cloneNode(true);c.querySelectorAll('del,.cum-diff-placeholder,button').forEach(x=>x.remove());return [...c.querySelectorAll('.cum-diff-text')].map(x=>x.textContent).join('');});
   assert.equal(await text(left),demo[1].data.character_book.entries.find(e=>e.comment.startsWith('34 ')).content);

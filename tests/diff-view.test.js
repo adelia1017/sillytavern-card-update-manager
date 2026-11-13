@@ -35,3 +35,20 @@ test('随机文本编辑的显示分块不会遗漏、重复或修改原文',()=
   assert.equal(blocks.map(b=>b.base).join(''),base);assert.equal(blocks.map(b=>b.mine).join(''),mine);assert.equal(blocks.map(b=>b.next).join(''),next);
  }
 });
+
+test('人物段落与关系、剧情标题改序时，不用重复列表行强行对齐',()=>{
+ const person='陈栎：\n- 男\n- 26岁\n- 负责港口巡查\n\n';
+ const relation='关系指导：\n- 认识港口的值班员\n\n';
+ const plot='剧情指导：\n- 暴风雨前完成检查\n';
+ const updatedRelation='关系指导：\n- 认识港口的救援队员\n\n';
+ const updatedPlot='剧情指导：\n- 暴风雨后检查堤坝\n\n';
+ const before=relation+person+plot;
+ const after=updatedPlot+updatedRelation;
+ for(const blocks of [displayBlocks(before,before,after),displayBlocks(undefined,before,after,true)]){
+  assert.equal(blocks.map(b=>b.mine).join(''),before);
+  assert.equal(blocks.map(b=>b.next).join(''),after);
+  assert.ok(blocks.some(b=>b.mine===person&&b.next===''));
+  assert.ok(blocks.every(b=>!b.mine.includes('陈栎：')||b.next===''));
+  assert.ok(blocks.every(b=>!b.next.includes('关系指导：')||!b.mine||b.mine.includes('关系指导：')));
+ }
+});

@@ -76,7 +76,7 @@ export class Manager {
         this.message=el('div',{class:'cum-message',role:'status','aria-live':'polite'});
         this.content=el('main',{class:'cum-content'});
         this.shell=el('div',{class:'cum-shell'},
-            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.15'))),
+            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE ASSISTANT'),el('h2',{id:'cum-title'},'角色卡更新助手',el('span',{class:'cum-version'},'0.1.16'))),
                 el('div',{class:'cum-header-actions'},button('使用引导',()=>this.openGuide(),{class:'cum-quiet','aria-haspopup':'dialog'}),
                     button('关闭',()=>{if(!this.busy)this.dialog.close();},{class:'cum-quiet'}))),this.message,this.content);
         this.dialog.append(this.shell);document.body.append(this.dialog);this.dialog.showModal();

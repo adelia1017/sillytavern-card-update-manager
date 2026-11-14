@@ -1,1 +1,1 @@
-{"name":"sillytavern-card-update-manager","version":"0.1.15","private":true,"type":"module","scripts":{"test":"node --test tests/*.test.js"}}
+{"name":"sillytavern-card-update-manager","version":"0.1.16","private":true,"type":"module","scripts":{"test":"node --test tests/*.test.js"}}

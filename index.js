@@ -7,7 +7,7 @@ async function open(card){
     try{
         if(!manager){const host=await connectHost();manager=new Manager(host,new Storage(host.account));}
         await manager.open(card?.avatar?card:undefined);
-    }catch(error){console.error('[Card Update Manager]',error);globalThis.toastr?.error(error.message,'角色卡更新管理器');}
+    }catch(error){console.error('[Card Update Manager]',error);globalThis.toastr?.error(error.message,'角色卡更新助手');}
 }
 function install(){
     if(document.getElementById('cum-open'))return;
@@ -15,7 +15,7 @@ function install(){
     if(!target){setTimeout(install,1000);return;}
     const block=document.createElement('div');block.id='cum-launcher';block.className='inline-drawer';
     const header=document.createElement('div');header.className='inline-drawer-toggle inline-drawer-header';
-    const title=document.createElement('b');title.textContent='角色卡更新管理器';
+    const title=document.createElement('b');title.textContent='角色卡更新助手';
     const icon=document.createElement('div');icon.className='inline-drawer-icon fa-solid fa-circle-chevron-down down';header.append(title,icon);
     const content=document.createElement('div');content.className='inline-drawer-content';
     const button=document.createElement('button');button.id='cum-open';button.className='menu_button';button.type='button';button.textContent='打开更新管理器';button.addEventListener('click',()=>open());content.append(button);block.append(header,content);target.append(block);
@@ -30,6 +30,6 @@ function install(){
         },true);
     }
     const menu=document.querySelector('#extensionsMenu');
-    if(menu){const entry=document.createElement('div');entry.className='list-group-item flex-container flexGap5';entry.tabIndex=0;entry.role='button';entry.textContent='角色卡更新管理器';entry.addEventListener('click',open);entry.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();open();}});menu.append(entry);}
+    if(menu){const entry=document.createElement('div');entry.className='list-group-item flex-container flexGap5';entry.tabIndex=0;entry.role='button';entry.textContent='角色卡更新助手';entry.addEventListener('click',open);entry.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();open();}});menu.append(entry);}
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();

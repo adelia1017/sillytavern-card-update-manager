@@ -107,7 +107,7 @@ export function displayBlocks(base,mine,next,twoWay=false){
 
 function node(tag,className,text){const e=document.createElement(tag);e.className=className;if(text!==undefined)e.textContent=text;return e;}
 function button(text,action){const e=node('button','',text);e.type='button';e.addEventListener('click',action);return e;}
-export function createComparison(row,{twoWay=false}={}){
+export function createComparison(row,{twoWay=false,syncEnabled=true,onSyncChange=()=>{}}={}){
     const blocks=displayBlocks(row.base?.content,row.mine?.content,row.next?.content,twoWay);
     const expanded=new Set();
     const element=node('div','cum-comparison cum-diff-view');
@@ -138,7 +138,7 @@ export function createComparison(row,{twoWay=false}={}){
         const top=source.scrollTop;
         const expected=mirrored.get(source);
         mirrored.delete(source);
-        if(!target||!pairs.length||top===expected)return;
+        if(!syncEnabled||!target||!pairs.length||top===expected)return;
         if(top<=0){setScroll(target,0);return;}
         if(top>=source.scrollHeight-source.clientHeight-1){setScroll(target,target.scrollHeight);return;}
 
@@ -176,12 +176,18 @@ export function createComparison(row,{twoWay=false}={}){
     }
     const foldable=block=>block.kind==='same'&&(block.base.length>180||block.base.split('\n').length>5);
     const expand=button('全部展开相同段落',()=>{blocks.forEach((b,i)=>{if(foldable(b))expanded.add(i);});render();});
-    controls.append(expand);
+    const sync=button('同步滚动',()=>{
+        syncEnabled=!syncEnabled;
+        sync.setAttribute('aria-pressed',String(syncEnabled));
+        onSyncChange(syncEnabled);
+    });
+    sync.setAttribute('aria-pressed',String(syncEnabled));
+    controls.append(sync,expand);
     if(!twoWay&&row.base&&['both','same'].includes(row.type)){
         const original=node('details','cum-original');
         original.append(node('summary','','原文'));
-        const paper=node('pre','cum-original-text',row.base.content);
-        paper.tabIndex=0;paper.setAttribute('aria-label','作者旧版原文');
+        const paper=node('div','cum-original-text',row.base.content);
+        paper.tabIndex=0;paper.setAttribute('role','region');paper.setAttribute('aria-label','作者旧版原文');
         original.append(paper);
         element.insertBefore(original,element.lastElementChild);
     }

@@ -182,9 +182,9 @@
 
 .cum-dialog .cum-diff-view .is-changed{cursor:pointer}
 .cum-dialog .cum-diff-view .cum-diff-target>.cum-diff-block{outline:1px solid var(--cum-accent);outline-offset:-1px}
-.cum-dialog .cum-diff-view .cum-original{min-width:0;margin:0;padding:0;border:0;background:var(--cum-panel)}
+.cum-dialog .cum-diff-view .cum-original{min-width:0;margin:0;padding:0;border:0;background:var(--cum-panel);overflow:hidden}
 .cum-dialog .cum-original summary{padding:8px 10px;white-space:nowrap;background:var(--cum-button)}
-.cum-dialog .cum-original-text{margin:0;padding:12px;height:clamp(240px,58dvh,650px);max-height:none;overflow:auto;background:var(--cum-panel);color:var(--cum-text);font:12px/1.6 system-ui,'Microsoft YaHei',sans-serif;overscroll-behavior:contain}
+.cum-dialog .cum-original-text{box-sizing:border-box;margin:0;padding:12px;height:clamp(240px,58dvh,650px);overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--cum-panel);color:var(--cum-text);font:12px/1.6 system-ui,'Microsoft YaHei',sans-serif;overscroll-behavior:contain}
 .cum-dialog .cum-pending-filter{display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px 8px;font-weight:700;text-align:left}
 .cum-pending-filter span{font-size:11px;font-weight:400}
 .cum-dialog .cum-pending-filter.has-pending,.cum-pending-badge{color:var(--cum-text);background:color-mix(in srgb,#e5a34c 23%,var(--cum-panel));border:1px solid #c28c43}
@@ -219,6 +219,10 @@
  .cum-detail-actions .cum-entry-nav{width:100%}
  .cum-detail-actions .cum-actions{flex:1}
  .cum-dialog .cum-diff-view .cum-original{border-block:1px solid var(--cum-border)}
+ .cum-dialog .cum-diff-view:has(.cum-original){grid-template-rows:auto auto auto}
+ .cum-dialog .cum-diff-view:has(.cum-original) .cum-text-mine{grid-row:1}
+ .cum-dialog .cum-diff-view .cum-original{grid-row:2}
+ .cum-dialog .cum-diff-view:has(.cum-original) .cum-text-author{grid-row:3}
  .cum-dialog .cum-original-text{height:clamp(160px,30dvh,280px)}
 }
 .cum-header-actions,.cum-help-group{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%}

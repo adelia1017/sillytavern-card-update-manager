@@ -76,7 +76,7 @@ export class Manager {
         this.message=el('div',{class:'cum-message',role:'status','aria-live':'polite'});
         this.content=el('main',{class:'cum-content'});
         this.shell=el('div',{class:'cum-shell'},
-            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.14'))),
+            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.15'))),
                 el('div',{class:'cum-header-actions'},button('使用引导',()=>this.openGuide(),{class:'cum-quiet','aria-haspopup':'dialog'}),
                     button('关闭',()=>{if(!this.busy)this.dialog.close();},{class:'cum-quiet'}))),this.message,this.content);
         this.dialog.append(this.shell);document.body.append(this.dialog);this.dialog.showModal();
@@ -280,7 +280,11 @@ export class Manager {
         this.comparisonView?.destroy();
         const s=this.state,r=s.rows[s.selected];this.detail.replaceChildren();
         if(!r){this.detail.append(el('p',{class:'cum-empty'},s.filter==='pending'?'所有条目已处理。':'当前筛选下没有条目。可选择“全部条目”查看。'));return;}
-        this.comparisonView=createComparison(r,{twoWay:!!s.twoWay});
+        this.comparisonView=createComparison(r,{
+            twoWay:!!s.twoWay,
+            syncEnabled:this.syncScrollEnabled??true,
+            onSyncChange:enabled=>{this.syncScrollEnabled=enabled;},
+        });
         const choose=choice=>this.run(async()=>{r.choice=choice;await this.saveDraft();this.renderMerge();});
         const at=this.visibleRows.indexOf(s.selected);
         const entrySelect=el('select',{class:'cum-entry-select','aria-label':'切换条目',title:r.title},

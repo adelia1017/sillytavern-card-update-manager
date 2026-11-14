@@ -5,7 +5,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE??'playwright');
-const root=path.resolve('test-results/mobile-v0.1.14');await fs.mkdir(root,{recursive:true});
+const root=path.resolve('test-results/mobile-v0.1.15');await fs.mkdir(root,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const widths=[[320,568],[360,640],[390,844],[430,932],[844,390],[1440,1000]];
 try{

@@ -5,7 +5,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE??'playwright');
-const root=path.resolve('test-results/mobile-v0.1.13');await fs.mkdir(root,{recursive:true});
+const root=path.resolve('test-results/mobile-v0.1.14');await fs.mkdir(root,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const widths=[[320,568],[360,640],[390,844],[430,932],[844,390],[1440,1000]];
 try{
@@ -69,6 +69,11 @@ try{
    assert.ok(await help.evaluate(e=>e===document.activeElement));
    assert.ok(await page.getByRole('button',{name:'检查并覆盖更新',exact:true}).isDisabled());
   }
+  await page.getByRole('button',{name:'条目统计',exact:true}).click();
+  const stats=page.getByRole('dialog',{name:'条目统计',exact:true});
+  assert.match(await stats.textContent(),/共 80 条/);
+  assert.match(await stats.getByRole('row').filter({hasText:'双方修改'}).textContent(),/双方修改1待手动选择/);
+  await stats.getByRole('button',{name:'关闭统计',exact:true}).click();
   const pending=page.getByRole('button',{name:'1 条待处理，只看待处理'});
   await pending.click();
   assert.equal(await page.getByRole('combobox',{name:'筛选条目'}).inputValue(),'pending');
@@ -122,7 +127,9 @@ try{
   assert.ok(await authorPanel.locator('.cum-paper').textContent().then(t=>t.includes('长正文末尾')));
   const pane=authorPanel.locator('.cum-paper');assert.equal(await pane.evaluate(e=>e.clientHeight<e.scrollHeight),true);
   await pane.evaluate(e=>{e.scrollTop=e.scrollHeight;});assert.equal(await pane.evaluate(e=>e.scrollTop+e.clientHeight>=e.scrollHeight-2),true);
-  if(mobile)assert.equal(await minePanel.locator('.cum-paper').evaluate(e=>e.scrollTop),0);
+  const minePaper=minePanel.locator('.cum-paper');
+  await page.waitForFunction(()=>{const p=document.querySelector('.cum-text-mine .cum-paper');return Math.abs(p.scrollTop-(p.scrollHeight-p.clientHeight))<=1;});
+  await minePaper.evaluate(e=>{e.scrollTop=0;});
   if(mobile)await page.getByRole('button',{name:'条目列表',exact:true}).click();
   await selectEntry('条目 5');
   await visible(authorPanel.locator('.cum-paper'));

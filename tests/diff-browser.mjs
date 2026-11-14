@@ -4,7 +4,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE??'playwright');
-const root=path.resolve('test-results/diff-v0.1.11');await fs.mkdir(root,{recursive:true});
+const root=path.resolve('test-results/diff-v0.1.14');await fs.mkdir(root,{recursive:true});
 const demo=await Promise.all(['01-author-original','02-player-modified','03-author-update'].map(async n=>JSON.parse(await fs.readFile('../../03_results/card-update-manager/demo-cards-v2/'+n+'.json','utf8'))));
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
@@ -46,7 +46,10 @@ try{
   assert.ok(order[0].includes('cum-text-mine')&&order[1].includes('cum-original')&&order[2].includes('cum-text-author'));
   await left.evaluate(e=>{e.scrollTop=160;});
   await page.waitForTimeout(150);
-  assert.equal(await right.evaluate(e=>e.scrollTop),0);
+  await page.waitForFunction(()=>document.querySelector('.cum-text-author .cum-paper').scrollTop>0);
+  assert.equal(await left.evaluate(e=>e.scrollTop),160);
+  await right.evaluate(e=>{e.scrollTop=0;});
+  await page.waitForFunction(()=>document.querySelector('.cum-text-mine .cum-paper').scrollTop===0);
   const source=left.locator('.is-changed').nth(4);
   const id=await source.evaluate(e=>e.parentElement.dataset.block);
   await source.evaluate(e=>e.click());

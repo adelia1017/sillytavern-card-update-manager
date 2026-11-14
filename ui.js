@@ -1,5 +1,5 @@
 import {createComparison} from './diff-view.js';
-import {copy,entriesOf,matchEntries,buildRows,buildTwoWayRows,LABELS,selectedEntry,assembleWorld,toCharacterBook,normalizeCardWorld} from './core.js';
+import {copy,entriesOf,matchEntries,buildRows,buildTwoWayRows,defaultChoice,LABELS,selectedEntry,assembleWorld,toCharacterBook,normalizeCardWorld} from './core.js';
 import {readCardFile,packCard,download,bytesToBase64,base64ToBytes,parseJSON} from './card.js';
 import {applyUpdate} from './host.js';
 
@@ -76,7 +76,7 @@ export class Manager {
         this.message=el('div',{class:'cum-message',role:'status','aria-live':'polite'});
         this.content=el('main',{class:'cum-content'});
         this.shell=el('div',{class:'cum-shell'},
-            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.13'))),
+            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.14'))),
                 el('div',{class:'cum-header-actions'},button('使用引导',()=>this.openGuide(),{class:'cum-quiet','aria-haspopup':'dialog'}),
                     button('关闭',()=>{if(!this.busy)this.dialog.close();},{class:'cum-quiet'}))),this.message,this.content);
         this.dialog.append(this.shell);document.body.append(this.dialog);this.dialog.showModal();
@@ -223,10 +223,35 @@ export class Manager {
         if(pendingOnly||pending)pendingButton.append(el('span',{},pendingOnly?'清除筛选':'只看待处理'));
         this.list=el('aside',{class:'cum-entry-list','aria-label':'世界书条目'});this.detail=el('section',{class:'cum-detail','aria-label':'条目差异详情',tabindex:'-1'});
         this.mobileTabs=el('div',{class:'cum-mobile-tabs','aria-label':'比较面板'},button('条目列表',()=>this.setMobilePane('list'),{'data-pane':'list'}),button('差异详情',()=>this.setMobilePane('detail'),{'data-pane':'detail'}));
-        this.content.replaceChildren(this.nav(),this.mobileTabs,el('div',{class:'cum-toolbar'},el('div',{class:'cum-merge-summary'},el('strong',{},`世界书 · ${s.rows.length} 条`),pendingButton),withHelp(filter,'按类型筛选','按差异类型缩小条目范围。点击待处理数量可直接筛出还需要决定的条目。')),
+        const statistics=button('条目统计',()=>this.showEntryStats(),{'aria-haspopup':'dialog'});
+        this.content.replaceChildren(this.nav(),this.mobileTabs,el('div',{class:'cum-toolbar'},el('div',{class:'cum-merge-summary'},el('strong',{},`世界书 · ${s.rows.length} 条`),pendingButton,statistics),withHelp(filter,'按类型筛选','按差异类型缩小条目范围。点击待处理数量可直接筛出还需要决定的条目。')),
             s.twoWay?el('div',{class:'cum-two-way-tools'},el('p',{class:'cum-note'},'无旧原版：仅显示版本差异，无法判断修改来源。仅一侧存在的条目也需确认；无法可靠匹配的条目分开显示。'),el('div',{class:'cum-actions'},button(`剩余 ${pending} 条保留当前版`,()=>this.run(()=>this.resolvePending('mine')),{disabled:!pending}),button(`剩余 ${pending} 条采用新版`,()=>this.run(()=>this.resolvePending('next')),{disabled:!pending}))):el('span',{hidden:''}),el('div',{class:'cum-workspace'},this.list,this.detail),
             el('footer',{class:'cum-footer'},el('span',{},'其他卡内容采用作者新版；世界书沿用原名写回。'),el('div',{class:'cum-actions'},button('保存草稿',()=>this.run(async()=>{await this.saveDraft();this.say('草稿已保存。');})),withHelp(button('检查并覆盖更新',()=>this.run(()=>this.apply()),{class:'cum-primary',disabled:!!pending}),'检查并覆盖更新','先处理完所有待确认条目。确认更新后会创建恢复备份，沿用原名写回主要世界书。共用此世界书的角色也会读到更新内容。开场白、描述、正则和脚本等采用作者新版。'))));
         this.drawList();this.setMobilePane(s.mobilePane??'list');
+    }
+    showEntryStats(){
+        const {rows,twoWay}=this.state;
+        const counts=new Map();
+        for(const row of rows)counts.set(row.type,(counts.get(row.type)??0)+1);
+        const pending=rows.filter(row=>!row.choice).length;
+        openInfoDialog('条目统计',dialog=>{
+            const body=el('tbody');
+            for(const [type,label] of Object.entries(LABELS)){
+                if(!counts.has(type))continue;
+                const choice=defaultChoice(type);
+                let treatment='待手动选择';
+                if(['authorDeleted','mineDeleted','bothDeleted'].includes(type))treatment='删除条目';
+                else if(type==='same')treatment='采用共同结果';
+                else if(choice==='mine')treatment='保留我的版本';
+                else if(choice==='next')treatment='采用作者新版';
+                body.append(el('tr',{},el('th',{scope:'row'},label),el('td',{},String(counts.get(type))),el('td',{},treatment)));
+            }
+            dialog.append(el('h3',{},'条目统计'),
+                el('p',{},`${twoWay?'两方比较':'三方比较'} · 共 ${rows.length} 条 · ${pending} 条待处理`),
+                el('table',{class:'cum-stats-table','aria-label':'各类型条目和默认处理'},
+                    el('thead',{},el('tr',{},['类型','数量','默认处理'].map(label=>el('th',{scope:'col'},label)))),body),
+                el('div',{class:'cum-actions'},button('关闭统计',()=>dialog.close(),{autofocus:''})));
+        });
     }
     setMobilePane(pane){
         this.state.mobilePane=pane;this.content.dataset.mobilePane=pane;
@@ -284,10 +309,17 @@ export class Manager {
         this.detail.append(el('details',{class:'cum-result-preview'},el('summary',{},'合并结果预览'),el('pre',{class:'cum-result-content'},r.choice?(entry?.content??'（删除此条目）'):'尚未选择')));
     }
     editFields(row){
-        const current=row.choice==='custom'?row.custom.content:(row.mine?.content??row.next?.content??'');
-        const editor=el('textarea',{'aria-label':'编辑最终正文',rows:'14'});editor.value=current;
+        const compareMine=['both','same','additionConflict'].includes(row.type);
+        const current=row.choice==='custom'?row.custom.content:
+            compareMine?(row.next?.content??''):(row.mine?.content??row.next?.content??'');
+        const editor=el('textarea',{'aria-label':'编辑最终正文',rows:compareMine?'10':'14'});editor.value=current;
+        const reference=compareMine?el('section',{class:'cum-edit-reference','aria-label':'我的版本'},
+            el('h4',{},'我的版本'),el('pre',{tabindex:'0'},row.mine?.content??'（我的版本中没有此条目）')):null;
+        const editorLabel=compareMine?(row.choice==='custom'?'继续编辑已保存的正文':'以作者新版为起点编辑'):null;
+        this.comparisonView?.destroy();
         const form=el('div',{class:'cum-field-form'},el('h3',{},'编辑合并后的正文'),el('p',{},'这里只修改正文；开关、触发方式等配置采用作者新版。'),editor,
             el('div',{class:'cum-actions'},button('取消',()=>this.drawDetail()),button('保存正文',()=>this.run(async()=>{row.custom={...copy(row.next??row.mine),content:editor.value};row.choice='custom';await this.saveDraft();this.renderMerge();}),{class:'cum-primary'})));
+        if(reference)editor.before(reference,el('p',{class:'cum-edit-label'},editorLabel));
         this.detail.replaceChildren(form);
     }
     async prepareResult(){

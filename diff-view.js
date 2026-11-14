@@ -114,6 +114,7 @@ export function createComparison(row,{twoWay=false}={}){
     const controls=node('div','cum-diff-controls');controls.setAttribute('aria-label','正文显示方式');
     let frame=0,disposed=false;
     const papers=[],pairs=[];
+    const mirrored=new WeakMap();
     const mobile=matchMedia('(max-width:760px), (max-height:500px) and (max-width:1000px)');
     const align=()=>{
         cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{
@@ -124,22 +125,53 @@ export function createComparison(row,{twoWay=false}={}){
         });
     };
     const observer=new ResizeObserver(align);
+    function setScroll(paper,top){
+        const before=paper.scrollTop;
+        paper.scrollTop=top;
+        if(paper.scrollTop!==before)mirrored.set(paper,paper.scrollTop);
+    }
+    function rowTop(paper,row){
+        return row.getBoundingClientRect().top-paper.getBoundingClientRect().top+paper.scrollTop;
+    }
+    function syncScroll(side){
+        const source=papers[side],target=papers[1-side];
+        const top=source.scrollTop;
+        const expected=mirrored.get(source);
+        mirrored.delete(source);
+        if(!target||!pairs.length||top===expected)return;
+        if(top<=0){setScroll(target,0);return;}
+        if(top>=source.scrollHeight-source.clientHeight-1){setScroll(target,target.scrollHeight);return;}
+
+        // Use corresponding blocks rather than whole-pane percentages. Mobile rows have different heights.
+        let first=0,last=pairs.length-1;
+        while(first<last){
+            const mid=Math.ceil((first+last)/2);
+            if(rowTop(source,pairs[mid][side])<=top+12)first=mid;
+            else last=mid-1;
+        }
+        const start=rowTop(source,pairs[first][side]);
+        const end=pairs[first+1]?rowTop(source,pairs[first+1][side]):source.scrollHeight;
+        const otherStart=rowTop(target,pairs[first][1-side]);
+        const otherEnd=pairs[first+1]?rowTop(target,pairs[first+1][1-side]):target.scrollHeight;
+        const progress=Math.max(0,Math.min(1,(top+12-start)/Math.max(1,end-start)));
+        setScroll(target,otherStart+progress*(otherEnd-otherStart)-12);
+    }
     function jumpTo(index,side){
         const target=pairs[index]?.[1-side];
         if(!target)return;
         element.querySelector('.cum-diff-target')?.classList.remove('cum-diff-target');
         target.classList.add('cum-diff-target');
-        if(mobile.matches)target.scrollIntoView({block:'center'});
-        else{
-            const paper=papers[1-side];
-            paper.scrollTop+=target.getBoundingClientRect().top-paper.getBoundingClientRect().top-12;
-        }
+        const paper=papers[1-side];
+        setScroll(paper,rowTop(paper,target)-12);
+        if(mobile.matches)paper.scrollIntoView({block:'nearest'});
     }
     for(const [side,label]of [['mine',twoWay?'当前版本':'我的版本'],['next','作者新版']]){
         const panel=node('section','cum-text-panel cum-text-'+(side==='mine'?'mine':'author'));panel.setAttribute('aria-label',label);
         panel.append(node('h4','',label));
         const paper=node('div','cum-paper');paper.tabIndex=0;paper.role='region';paper.setAttribute('aria-label',label+'正文，可滚动');
         panel.append(paper);element.append(panel);papers.push(paper);
+        const index=papers.length-1;
+        paper.addEventListener('scroll',()=>syncScroll(index));
         observer.observe(paper);
     }
     const foldable=block=>block.kind==='same'&&(block.base.length>180||block.base.split('\n').length>5);

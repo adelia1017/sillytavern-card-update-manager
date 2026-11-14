@@ -236,3 +236,12 @@
  .cum-dialog .cum-toolbar .cum-help-group select{width:100%}
  .cum-merge-page .cum-footer .cum-help-group>.cum-primary{flex:1;min-width:0}
 }
+
+.cum-stats-table{width:100%;border-collapse:collapse;margin:8px 0;text-align:left}
+.cum-stats-table :is(th,td){padding:7px 8px;border-bottom:1px solid var(--cum-border);font-size:13px}
+.cum-stats-table thead{background:var(--cum-button)}
+.cum-stats-table th[scope=row]{font-weight:500}
+.cum-stats-table td:nth-child(2){font-variant-numeric:tabular-nums}
+.cum-dialog .cum-edit-reference h4{margin:8px 0 4px}
+.cum-dialog .cum-edit-reference pre{max-height:clamp(100px,24dvh,240px);margin:0;background:var(--cum-panel);border:1px solid var(--cum-border)}
+.cum-dialog .cum-edit-label{margin:10px 0 4px;font-weight:600}

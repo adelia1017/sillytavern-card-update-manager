@@ -70,8 +70,18 @@ try{
  }
  await page.getByRole('combobox',{name:'切换条目'}).selectOption({label:'向导'});await page.getByRole('button',{name:twoWay?'保留当前正文':'保留我的正文',exact:true}).click();
  await page.getByRole('button',{name:'编辑正文',exact:true}).click();
+ if(!twoWay){
+  const mine=page.getByRole('region',{name:'我的版本',exact:true});
+  assert.match(await mine.textContent(),/年龄：25/);
+  assert.equal(await page.getByRole('textbox',{name:'编辑最终正文'}).inputValue(),'年龄：22\n职业：资深向导');
+ }
  await page.getByRole('textbox',{name:'编辑最终正文'}).fill('年龄：25\n职业：资深向导');
  await page.getByRole('button',{name:'保存正文',exact:true}).click();
+ if(!twoWay){
+  await page.getByRole('button',{name:'编辑正文',exact:true}).click();
+  assert.equal(await page.getByRole('textbox',{name:'编辑最终正文'}).inputValue(),'年龄：25\n职业：资深向导');
+  await page.getByRole('button',{name:'取消',exact:true}).click();
+ }
  if(twoWay){
    await page.getByRole('combobox',{name:'切换条目'}).selectOption({label:'私有笔记'});await page.getByRole('button',{name:'保留当前正文',exact:true}).click();
    const retained=await page.evaluate(()=>window.cumTest.manager.state.rows.find(r=>r.title==='向导').custom.content);

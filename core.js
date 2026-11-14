@@ -68,11 +68,16 @@ export function sameContent(a,b){
     return a===b||a.replace(/\p{P}/gu,'')===b.replace(/\p{P}/gu,'');
 }
 
+export function defaultChoice(type){
+    if(['both','additionConflict','different','currentOnly','newOnly'].includes(type))return null;
+    return ['mine','mineAdded','mineDeleted'].includes(type)?'mine':'next';
+}
+
 export function buildTwoWayRows(mine,next){
     const map=matchEntries(mine,next),used=new Set(map),rows=[];
     const add=(m,n,id)=>{
         const type=!m?'newOnly':!n?'currentOnly':sameContent(m.content,n.content)?'unchanged':'different';
-        rows.push({id,mine:copy(m),next:copy(n),type,choice:type==='unchanged'?'next':null,title:n?.comment||m?.comment||`未命名条目 ${id}`});
+        rows.push({id,mine:copy(m),next:copy(n),type,choice:defaultChoice(type),title:n?.comment||m?.comment||`未命名条目 ${id}`});
     };
     mine.forEach((m,i)=>add(m,next[map[i]],`m${i}`));
     next.forEach((n,i)=>{if(!used.has(i))add(undefined,n,`n${i}`);});
@@ -92,7 +97,7 @@ export function buildRows(base, mine, next, maps = {}) {
     const usedM = new Set(mm), usedN = new Set(nm), rows = [];
     const add = (b,m,n,id) => {
         const type = classify(b,m,n);
-        const choice = ['both','additionConflict'].includes(type) ? null : ['mine','mineAdded','mineDeleted'].includes(type) ? 'mine':'next';
+        const choice = defaultChoice(type);
         rows.push({id, base:copy(b),mine:copy(m),next:copy(n),type,choice,title:n?.comment || m?.comment || b?.comment || `未命名条目 ${id}`});
     };
     base.forEach((b,i) => add(b,mine[mm[i]],next[nm[i]],`b${i}`));

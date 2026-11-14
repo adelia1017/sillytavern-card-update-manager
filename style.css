@@ -221,3 +221,18 @@
  .cum-dialog .cum-diff-view .cum-original{border-block:1px solid var(--cum-border)}
  .cum-dialog .cum-original-text{height:clamp(160px,30dvh,280px)}
 }
+.cum-header-actions,.cum-help-group{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%}
+.cum-header-actions{flex-shrink:0}
+.cum-dialog .cum-help-group>.cum-help-button{flex:0 0 28px;width:28px;min-height:28px;padding:0;border-radius:50%;background:transparent;color:var(--cum-muted);font-weight:700}
+.cum-dialog .cum-help-group>.cum-help-button:hover{color:var(--cum-text);background:var(--cum-button)}
+.cum-help-group>select{min-width:0}
+.cum-info-dialog{overflow:auto}
+.cum-info-dialog .cum-guide-counter{color:var(--cum-accent);font-size:12px;margin:0 0 6px}
+.cum-info-dialog h3{margin:0 0 10px}
+.cum-info-dialog p{line-height:1.65}
+.cum-info-dialog .cum-actions{flex-wrap:wrap}
+@media(max-width:760px),(max-height:500px) and (max-width:1000px){
+ .cum-dialog .cum-header-actions button{padding:5px 7px;font-size:12px;min-height:36px}
+ .cum-dialog .cum-toolbar .cum-help-group select{width:100%}
+ .cum-merge-page .cum-footer .cum-help-group>.cum-primary{flex:1;min-width:0}
+}

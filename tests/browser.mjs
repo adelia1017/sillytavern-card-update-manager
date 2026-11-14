@@ -57,13 +57,13 @@ try{
  assert.equal(await page.getByText('核对条目对应关系',{exact:true}).count(),0);
  await page.waitForSelector('.cum-entry-select');
  const types=await page.evaluate(()=>window.cumTest.manager.state.rows.map(r=>r.type));assert.ok(types.includes(twoWay?'different':'both'));assert.ok(types.includes(twoWay?'currentOnly':'mineAdded'));
- if(twoWay){assert.ok(await page.getByRole('button',{name:'检查并覆盖更新'}).isDisabled());await page.evaluate(async()=>{const m=window.cumTest.manager;delete m.state.record.baseline;await m.saveDraft();await m.selectCard(m.state.card);await m.resumeDraft();if(!m.state.twoWay||m.state.record.baseline)throw Error('Draft mode lost');});}
+ if(twoWay){assert.ok(await page.getByRole('button',{name:'检查并覆盖更新',exact:true}).isDisabled());await page.evaluate(async()=>{const m=window.cumTest.manager;delete m.state.record.baseline;await m.saveDraft();await m.selectCard(m.state.card);await m.resumeDraft();if(!m.state.twoWay||m.state.record.baseline)throw Error('Draft mode lost');});}
  if(twoWay){
   await page.setViewportSize({width:320,height:568});
   await page.locator('.cum-entry').filter({hasText:'向导'}).click();
   assert.equal(await page.locator('.cum-text-panel.cum-text-mine h4').textContent(),'当前版本');
   assert.equal(await page.locator('.cum-detail del').count(),0);
-  const footerBox=await page.getByRole('button',{name:'检查并覆盖更新'}).boundingBox();assert.ok(footerBox.y+footerBox.height<=569);
+  const footerBox=await page.getByRole('button',{name:'检查并覆盖更新',exact:true}).boundingBox();assert.ok(footerBox.y+footerBox.height<=569);
   assert.equal(await page.evaluate(()=>document.querySelector('.cum-dialog').scrollWidth<=document.querySelector('.cum-dialog').clientWidth),true);
   await page.screenshot({path:path.join(root,'two-way-mobile.png')});
   await page.setViewportSize({width:1440,height:1000});
@@ -79,7 +79,7 @@ try{
    assert.equal(await page.evaluate(()=>window.cumTest.manager.state.rows.find(r=>r.title==='向导').custom.content),retained);
    await page.evaluate(async()=>{const m=window.cumTest.manager;await m.selectCard(m.state.card);await m.resumeDraft();if(m.state.rows.some(r=>!r.choice))throw Error('Draft choices lost');});
  }
- assert.equal(await page.getByRole('button',{name:'检查并覆盖更新'}).isEnabled(),true);
+ assert.equal(await page.getByRole('button',{name:'检查并覆盖更新',exact:true}).isEnabled(),true);
  await page.screenshot({path:path.join(root,'desktop-merge.png'),fullPage:true});
  await page.setViewportSize({width:390,height:844});
  await page.screenshot({path:path.join(root,'mobile-merge.png'),fullPage:true});
@@ -87,7 +87,7 @@ try{
  await page.setViewportSize({width:1440,height:1000});
  // Stop reload only for assertions, while exercising the actual production transaction.
  await page.evaluate(()=>{window.cumTest.host.refresh=()=>{window.cumRefreshed=true;};});
- await page.getByRole('button',{name:'检查并覆盖更新'}).click();await page.getByRole('button',{name:'备份并覆盖更新',exact:true}).click();
+ await page.getByRole('button',{name:'检查并覆盖更新',exact:true}).click();await page.getByRole('button',{name:'备份并覆盖更新',exact:true}).click();
  await page.waitForFunction(()=>window.cumRefreshed || document.querySelector('.cum-message.cum-error'),{},{timeout:30000});
  const result=await page.evaluate(async()=>{
     const {host,store}=window.cumTest,card=await host.getCard('cum-test-card.png'),snapshot=await host.snapshot('cum-test-card.png');

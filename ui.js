@@ -15,6 +15,35 @@ function el(tag,attrs={},...children){
     return node;
 }
 const button=(text,action,attrs={})=>el('button',{type:'button',onclick:action,...attrs},text);
+const guideSteps=[
+    ['选择角色','从角色列表选择你正在玩的那张卡。管理器会读取它当前绑定的主要世界书。'],
+    ['准备作者旧原版','有修改前保存的作者原版，就用「导入旧原版」建立比较基线。已经保存基线时，可以直接继续。手上没有旧卡，下一步选「没有旧原版，直接比较」。'],
+    ['导入作者新版','选择作者发布的新版 PNG 或 JSON。三方比较能区分你和作者各自改了什么。没有旧原版时，只能看到两版哪里不同。'],
+    ['处理待处理条目','点击「只看待处理」，逐条选择保留自己的正文、采用新版，或编辑最终正文。可以查看合并结果预览，处理不完就保存草稿。'],
+    ['检查并更新','处理完差异后，选择「检查并覆盖更新」。确认后先备份再写回。如果只想拿到合并后的文件，打开「更多」选择「导出合并卡」。'],
+];
+
+function openInfoDialog(title,build){
+    const previousFocus=document.activeElement;
+    const dialog=el('dialog',{class:'cum-confirm cum-info-dialog','aria-label':title});
+    dialog.addEventListener('close',()=>{dialog.remove();previousFocus?.focus();},{once:true});
+    build(dialog);
+    document.body.append(dialog);
+    dialog.showModal();
+    return dialog;
+}
+
+function helpButton(title,description){
+    return button('?',()=>openInfoDialog(title,dialog=>{
+        dialog.append(el('h3',{},title),el('p',{},description),
+            el('div',{class:'cum-actions'},button('关闭说明',()=>dialog.close(),{autofocus:''})));
+    }),{class:'cum-help-button','aria-label':`${title}说明`,title:`${title}说明`,'aria-haspopup':'dialog'});
+}
+
+function withHelp(control,title,description){
+    return el('span',{class:'cum-help-group'},control,helpButton(title,description));
+}
+
 const pretty=v=>v===undefined?'（不存在）':typeof v==='string'?v:JSON.stringify(v,null,2);
 async function pickFile(accept){
     return new Promise(resolve=>{
@@ -47,10 +76,34 @@ export class Manager {
         this.message=el('div',{class:'cum-message',role:'status','aria-live':'polite'});
         this.content=el('main',{class:'cum-content'});
         this.shell=el('div',{class:'cum-shell'},
-            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.12'))),
-                button('关闭',()=>{if(!this.busy)this.dialog.close();},{class:'cum-quiet'})),this.message,this.content);
+            el('header',{class:'cum-header'},el('div',{},el('span',{class:'cum-eyebrow'},'CARD UPDATE MANAGER'),el('h2',{id:'cum-title'},'角色卡更新管理器',el('span',{class:'cum-version'},'0.1.13'))),
+                el('div',{class:'cum-header-actions'},button('使用引导',()=>this.openGuide(),{class:'cum-quiet','aria-haspopup':'dialog'}),
+                    button('关闭',()=>{if(!this.busy)this.dialog.close();},{class:'cum-quiet'}))),this.message,this.content);
         this.dialog.append(this.shell);document.body.append(this.dialog);this.dialog.showModal();
         await this.run(()=>card?this.selectCard(card):this.home());
+    }
+    openGuide(){
+        const {card,record,rows}=this.state;
+        let step=rows?(rows.some(row=>!row.choice)?3:4):card?(record?.baseline?2:1):0;
+        openInfoDialog('使用引导',dialog=>{
+            const counter=el('p',{class:'cum-guide-counter'},'');
+            const heading=el('h3',{tabindex:'-1',autofocus:''});
+            const description=el('p');
+            const previous=button('上一步',()=>{step--;render();heading.focus();});
+            const next=button('下一步',()=>{
+                if(step===guideSteps.length-1){dialog.close();return;}
+                step++;render();heading.focus();
+            },{class:'cum-primary'});
+            function render(){
+                counter.textContent=`步骤 ${step+1} / ${guideSteps.length}`;
+                [heading.textContent,description.textContent]=guideSteps[step];
+                previous.disabled=step===0;
+                next.textContent=step===guideSteps.length-1?'完成':'下一步';
+            }
+            dialog.append(counter,heading,description,el('div',{class:'cum-actions'},
+                button('返回操作',()=>dialog.close()),previous,next));
+            render();
+        });
     }
     async run(task){
         if(this.busy)return;
@@ -96,8 +149,8 @@ export class Manager {
         this.renderSetup();
     }
     nav(){
-        const actions=el('div',{class:'cum-more-actions'},button('备份与恢复',()=>this.run(()=>this.backupPage())),button('导出项目备份',()=>this.run(()=>this.exportProject())));
-        if(this.state.rows)actions.append(button('导出合并卡',()=>this.run(()=>this.exportMerged()),{disabled:this.state.rows.some(r=>!r.choice)}),button('读取当前修改重新比较',()=>this.run(async()=>{if(!await this.confirm('重新读取会清除当前条目选择，是否继续？','重新比较'))return;this.state.snapshot=await this.host.snapshot(this.state.card.avatar);await this.beginComparison();})));
+        const actions=el('div',{class:'cum-more-actions'},withHelp(button('备份与恢复',()=>this.run(()=>this.backupPage())),'备份与恢复','这里可以查看覆盖更新前的快照。恢复同名写回的版本时，也会还原当时的世界书内容。'),withHelp(button('导出项目备份',()=>this.run(()=>this.exportProject())),'导出项目备份','导出当前角色的旧原版基线、草稿和恢复快照。换浏览器前可以用它把更新记录带走。'));
+        if(this.state.rows)actions.append(withHelp(button('导出合并卡',()=>this.run(()=>this.exportMerged()),{disabled:this.state.rows.some(r=>!r.choice)}),'导出合并卡','将已决定的结果打包成 PNG 角色卡。酒馆中的角色和世界书不会被写入。'),button('读取当前修改重新比较',()=>this.run(async()=>{if(!await this.confirm('重新读取会清除当前条目选择，是否继续？','重新比较'))return;this.state.snapshot=await this.host.snapshot(this.state.card.avatar);await this.beginComparison();})));
         return el('div',{class:'cum-heading cum-nav'},el('div',{class:'cum-nav-title'},button('← 角色列表',()=>this.run(()=>this.home()),{class:'cum-quiet'}),el('div',{class:'cum-character-name'},el('h3',{},this.state.card.name),el('small',{},this.state.card.avatar))),el('details',{class:'cum-more'},el('summary',{},'更多'),actions));
     }
     renderSetup(){
@@ -105,10 +158,10 @@ export class Manager {
         this.content.classList.remove('cum-merge-page');
         const s=this.state;
         const steps=el('div',{class:'cum-steps'},
-            el('section',{class:'cum-step'},el('span',{class:'cum-step-number'},'01'),el('h4',{},'作者旧原版'),el('p',{},s.record.baseline?`已保存：${s.record.baseline.data.name} · ${s.record.baseline.data.character_book.entries.length} 条`:'导入你开始修改前下载的作者原版，用来识别哪些改动来自你。'),button(s.record.baseline?'更换旧原版':'导入旧原版',()=>this.run(()=>this.importBaseline()))),
+            el('section',{class:'cum-step'},el('span',{class:'cum-step-number'},'01'),el('h4',{},'作者旧原版'),el('p',{},s.record.baseline?`已保存：${s.record.baseline.data.name} · ${s.record.baseline.data.character_book.entries.length} 条`:'导入你开始修改前下载的作者原版，用来识别哪些改动来自你。'),withHelp(button(s.record.baseline?'更换旧原版':'导入旧原版',()=>this.run(()=>this.importBaseline())),'作者旧原版','请选择你开始修改前保存的作者卡。更换旧原版会清除这张卡的合并草稿。')),
             el('section',{class:'cum-step'},el('span',{class:'cum-step-number'},'02'),el('h4',{},'当前游玩版'),el('p',{},'比较时直接读取这张卡实际绑定的主要世界书。无需切换聊天。')),
-            el('section',{class:'cum-step'},el('span',{class:'cum-step-number'},'03'),el('h4',{},'作者新版'),el('p',{},'导入 PNG 或 JSON 新版卡。比较期间不会修改酒馆中的角色卡。'),button('导入新版并比较',()=>this.run(()=>this.importNext()),{class:'cum-primary',disabled:!s.record.baseline}),button('没有旧原版，直接比较',()=>this.run(()=>this.importNext(true)),{class:'cum-quiet'})));
-        this.content.replaceChildren(this.nav(),steps,el('div',{class:'cum-actions'},s.record.draft?button('继续合并草稿',()=>this.run(()=>this.resumeDraft()),{class:'cum-primary'}):null,button('导入项目备份',()=>this.run(()=>this.importProject()))),
+            el('section',{class:'cum-step'},el('span',{class:'cum-step-number'},'03'),el('h4',{},'作者新版'),el('p',{},'导入 PNG 或 JSON 新版卡。比较期间不会修改酒馆中的角色卡。'),withHelp(button('导入新版并比较',()=>this.run(()=>this.importNext()),{class:'cum-primary',disabled:!s.record.baseline}),'导入新版并比较','选作者发布的新版卡。比较会读当前卡及其主要世界书，帮助区分你和作者的改动。'),withHelp(button('没有旧原版，直接比较',()=>this.run(()=>this.importNext(true)),{class:'cum-quiet'}),'没有旧原版','比较当前世界书和作者新版。缺少旧原版时无法判断谁改了内容，存在差异的条目需要你选择。')));
+        this.content.replaceChildren(this.nav(),steps,el('div',{class:'cum-actions'},s.record.draft?button('继续合并草稿',()=>this.run(()=>this.resumeDraft()),{class:'cum-primary'}):null,withHelp(button('导入项目备份',()=>this.run(()=>this.importProject())),'导入项目备份','选择从管理器导出的同一角色备份。导入会替换该角色已保存的基线和草稿。')),
             el('p',{class:'cum-note'},'只比较和合并主要世界书正文，开关和触发配置采用新版；开场白、描述、正则、脚本等其他角色卡内容采用作者新版。全局、聊天及附加世界书不纳入比较。'));
     }
     async importBaseline(){
@@ -170,9 +223,9 @@ export class Manager {
         if(pendingOnly||pending)pendingButton.append(el('span',{},pendingOnly?'清除筛选':'只看待处理'));
         this.list=el('aside',{class:'cum-entry-list','aria-label':'世界书条目'});this.detail=el('section',{class:'cum-detail','aria-label':'条目差异详情',tabindex:'-1'});
         this.mobileTabs=el('div',{class:'cum-mobile-tabs','aria-label':'比较面板'},button('条目列表',()=>this.setMobilePane('list'),{'data-pane':'list'}),button('差异详情',()=>this.setMobilePane('detail'),{'data-pane':'detail'}));
-        this.content.replaceChildren(this.nav(),this.mobileTabs,el('div',{class:'cum-toolbar'},el('div',{class:'cum-merge-summary'},el('strong',{},`世界书 · ${s.rows.length} 条`),pendingButton),filter),
+        this.content.replaceChildren(this.nav(),this.mobileTabs,el('div',{class:'cum-toolbar'},el('div',{class:'cum-merge-summary'},el('strong',{},`世界书 · ${s.rows.length} 条`),pendingButton),withHelp(filter,'按类型筛选','按差异类型缩小条目范围。点击待处理数量可直接筛出还需要决定的条目。')),
             s.twoWay?el('div',{class:'cum-two-way-tools'},el('p',{class:'cum-note'},'无旧原版：仅显示版本差异，无法判断修改来源。仅一侧存在的条目也需确认；无法可靠匹配的条目分开显示。'),el('div',{class:'cum-actions'},button(`剩余 ${pending} 条保留当前版`,()=>this.run(()=>this.resolvePending('mine')),{disabled:!pending}),button(`剩余 ${pending} 条采用新版`,()=>this.run(()=>this.resolvePending('next')),{disabled:!pending}))):el('span',{hidden:''}),el('div',{class:'cum-workspace'},this.list,this.detail),
-            el('footer',{class:'cum-footer'},el('span',{},'其他卡内容采用作者新版；世界书沿用原名写回。'),el('div',{class:'cum-actions'},button('保存草稿',()=>this.run(async()=>{await this.saveDraft();this.say('草稿已保存。');})),button('检查并覆盖更新',()=>this.run(()=>this.apply()),{class:'cum-primary',disabled:!!pending}))));
+            el('footer',{class:'cum-footer'},el('span',{},'其他卡内容采用作者新版；世界书沿用原名写回。'),el('div',{class:'cum-actions'},button('保存草稿',()=>this.run(async()=>{await this.saveDraft();this.say('草稿已保存。');})),withHelp(button('检查并覆盖更新',()=>this.run(()=>this.apply()),{class:'cum-primary',disabled:!!pending}),'检查并覆盖更新','先处理完所有待确认条目。确认更新后会创建恢复备份，沿用原名写回主要世界书。共用此世界书的角色也会读到更新内容。开场白、描述、正则和脚本等采用作者新版。'))));
         this.drawList();this.setMobilePane(s.mobilePane??'list');
     }
     setMobilePane(pane){
@@ -223,7 +276,7 @@ export class Manager {
         const actions=el('div',{class:'cum-actions'},
             button(s.twoWay?(r.mine?'保留当前正文':'当前版不含此条目'):r.mine?'保留我的正文':'保留我的删除',()=>choose('mine'),{'aria-pressed':String(r.choice==='mine')}),
             button(s.twoWay?(r.next?'采用新版正文':'新版不含此条目'):r.next?'采用新版正文':'接受新版删除',()=>choose('next'),{'aria-pressed':String(r.choice==='next')}),
-            r.mine||r.next?button('编辑正文',()=>this.editFields(r)):null);
+            r.mine||r.next?withHelp(button('编辑正文',()=>this.editFields(r)),'编辑正文','直接编写该条目的最终正文。开关和触发方式等配置采用作者新版。'):null);
         const tools=el('div',{class:'cum-detail-tools'},heading,
             el('div',{class:'cum-detail-actions'},navigation,actions,this.comparisonView.controls));
         this.detail.append(tools,this.comparisonView.element);

@@ -5,7 +5,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE??'playwright');
-const root=path.resolve('test-results/mobile-v0.1.12');await fs.mkdir(root,{recursive:true});
+const root=path.resolve('test-results/mobile-v0.1.13');await fs.mkdir(root,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const widths=[[320,568],[360,640],[390,844],[430,932],[844,390],[1440,1000]];
 try{
@@ -48,6 +48,27 @@ try{
    if(mobile)await page.locator('.cum-entry').filter({has:page.getByText(title,{exact:true})}).click();
    else await page.getByRole('combobox',{name:'切换条目'}).selectOption({label:title});
   };
+  if(width===320||width===1440){
+   const showGuide=page.getByRole('button',{name:'使用引导',exact:true});
+   await showGuide.click();
+   const guide=page.getByRole('dialog',{name:'使用引导',exact:true});
+   assert.equal(await guide.locator('.cum-guide-counter').textContent(),'步骤 4 / 5');
+   await guide.getByRole('button',{name:'上一步',exact:true}).click();
+   assert.equal(await guide.getByRole('heading').textContent(),'导入作者新版');
+   await guide.getByRole('button',{name:'下一步',exact:true}).click();
+   await guide.getByRole('button',{name:'下一步',exact:true}).click();
+   await guide.getByRole('button',{name:'完成',exact:true}).click();
+   await guide.waitFor({state:'detached'});
+   assert.ok(await showGuide.evaluate(e=>e===document.activeElement));
+   const help=page.getByRole('button',{name:'检查并覆盖更新说明',exact:true});
+   await help.click();
+   const info=page.getByRole('dialog',{name:'检查并覆盖更新',exact:true});
+   assert.match(await info.textContent(),/共用此世界书/);
+   await info.getByRole('button',{name:'关闭说明',exact:true}).click();
+   await info.waitFor({state:'detached'});
+   assert.ok(await help.evaluate(e=>e===document.activeElement));
+   assert.ok(await page.getByRole('button',{name:'检查并覆盖更新',exact:true}).isDisabled());
+  }
   const pending=page.getByRole('button',{name:'1 条待处理，只看待处理'});
   await pending.click();
   assert.equal(await page.getByRole('combobox',{name:'筛选条目'}).inputValue(),'pending');
@@ -81,7 +102,7 @@ try{
   const mb=await minePanel.boundingBox(),ab=await authorPanel.boundingBox();if(mobile)assert.ok(ab.y>mb.y);else {assert.ok(ab.x>mb.x);assert.ok(Math.abs(ab.y-mb.y)<2);}
   assert.equal(await page.locator('.cum-diff-view del').count(),0);
   await visible(minePanel.locator('.cum-paper'));
-  const footer=page.getByRole('button',{name:'检查并覆盖更新'});const fb=await footer.boundingBox();assert.ok(fb&&fb.y>=0&&fb.y+fb.height<=height+1,'Footer must remain in viewport');
+  const footer=page.getByRole('button',{name:'检查并覆盖更新',exact:true});const fb=await footer.boundingBox();assert.ok(fb&&fb.y>=0&&fb.y+fb.height<=height+1,'Footer must remain in viewport');
   assert.equal(await page.evaluate(()=>document.querySelector('.cum-dialog').scrollWidth<=document.querySelector('.cum-dialog').clientWidth+1),true);
   await page.screenshot({path:path.join(root,`detail-${width}x${height}.png`)});
   await page.getByRole('button',{name:'保留我的正文',exact:true}).click();
